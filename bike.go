@@ -87,7 +87,7 @@ func (_self *bike) Registry(component Component) {
 	componentType := reflect.TypeOf(component.Type)
 	_self.componentsByType[componentType] = &component
 	for _, inter := range component.Interfaces {
-		interfaceType := reflect.TypeOf(inter).Elem()
+		interfaceType := reflect.TypeOf(inter)
 		_self.componentsByType[interfaceType] = &component
 	}
 	if component.Scope == Prototype {
@@ -99,6 +99,37 @@ func (_self *bike) Registry(component Component) {
 func (_self *bike) InstanceByType(inputType any) (interface{}, error) {
 	_type := reflect.TypeOf(inputType)
 	return _self.instanceByType(_type)
+}
+
+func (_self *bike) InstanceById(id string) (interface{}, error) {
+	component, ok := _self.componentsById[id]
+	if ok {
+		if component.Scope == Singleton {
+			if component.instanceValue.Elem().CanAddr() {
+				return component.instanceValue.Elem().Addr().Interface(), nil
+			} else {
+				return component.instanceValue.Elem().Interface(), nil
+			}
+		} else if component.Scope == Prototype {
+			instance, err := _self.createComponent(component)
+			if err != nil {
+				return nil, err
+			}
+			var interfaceInstance any
+			if instance.Elem().CanAddr() {
+				interfaceInstance = instance.Elem().Addr().Interface()
+			} else {
+				interfaceInstance = instance.Elem().Interface()
+			}
+			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
+			return interfaceInstance, nil
+		} else {
+			message := "Invalid Scope: " + component.Scope.String()
+			return nil, &BikeError{messageError: message, errorCode: InvalidScope}
+		}
+	}
+	message := "Component by id:" + id + " not found"
+	return nil, &BikeError{messageError: message, errorCode: ComponentNotFound}
 }
 
 func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
@@ -128,7 +159,7 @@ func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
 			return nil, &BikeError{messageError: message, errorCode: InvalidScope}
 		}
 	}
-	message := "Component by type" + _type.Elem().Name() + " not found"
+	message := "Component by type:" + _type.Elem().Name() + " not found"
 	return nil, &BikeError{messageError: message, errorCode: ComponentNotFound}
 }
 
