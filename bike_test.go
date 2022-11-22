@@ -23,6 +23,13 @@ func (_self *StrucComponent) Stop() {
 	_self.StopStatus = true
 }
 
+func NewInterfaceComponent() InterfaceComponent {
+	return &StrucComponent{}
+}
+
+func InvalidConstructor() {
+}
+
 func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceById(t *testing.T) {
 	// Given
 	structComponent := Component{
@@ -58,7 +65,7 @@ func TestRegistry_GivenComponentWithType_WhenRegistry_ThenReturnNotNullInstanceB
 		t.Errorf("Error to get instance by type:%s.", err.Error())
 	}
 	if instance == nil {
-		t.Errorf("InstanceById return nil.")
+		t.Errorf("InstanceByType return nil.")
 	}
 }
 
@@ -78,7 +85,7 @@ func TestRegistry_GivenComponentWithTypeAndInterfaces_WhenRegistry_ThenReturnNot
 		t.Errorf("Error to get instance by type:%s.", err.Error())
 	}
 	if instance == nil {
-		t.Errorf("InstanceById return nil.")
+		t.Errorf("InstanceByType return nil.")
 	}
 }
 
@@ -118,9 +125,119 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	strucComponentInstance := (instance).(*StrucComponent)
 	strucComponentInstance.StopStatus = false
 	bike.Stop()
-
 	// Then
 	if strucComponentInstance.StopStatus == false {
 		t.Errorf("Bike doesn't call stop method StrucComponent")
+	}
+}
+
+func TestInstanceById_GivenComponentWithConstructorAndIdAndScopeSingleton_WhenRegistry_ThenReturnNotNullInstanceById(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewInterfaceComponent,
+		Scope:       Singleton,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	// When
+	bike.Registry(structComponent)
+	bike.Start()
+	// Then
+	instance, err := bike.InstanceById(structComponent.Id)
+	if err != nil {
+		t.Errorf("Error to get instance by id:%s.", err.Error())
+	}
+	if instance == nil {
+		t.Errorf("InstanceById return nil.")
+	}
+}
+
+func TestInstanceById_GivenComponentWithConstructorAndIdAndScopePrototype_WhenInstanceById_ThenReturnNotNull(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewInterfaceComponent,
+		Scope:       Prototype,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(structComponent)
+	bike.Start()
+	// When
+	instance, err := bike.InstanceById(structComponent.Id)
+	// Then
+	if err != nil {
+		t.Errorf("Error to get instance by id:%s.", err.Error())
+	}
+	if instance == nil {
+		t.Errorf("InstanceById return nil.")
+	}
+}
+
+func TestInstanceById_GivenComponentWithIdAndScopePrototype_WhenInstanceById_ThenReturnNotNull(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Type:  (*StrucComponent)(nil),
+		Scope: Prototype,
+		Id:    "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(structComponent)
+	bike.Start()
+	// When
+	instance, err := bike.InstanceById(structComponent.Id)
+	// Then
+	if err != nil {
+		t.Errorf("Error to get instance by id:%s.", err.Error())
+	}
+	if instance == nil {
+		t.Errorf("InstanceById return nil.")
+	}
+}
+
+func TestInstanceById_GivenComponentWithInvalidConstructor_WhenInstanceById_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: InvalidConstructor,
+		Scope:       Prototype,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(structComponent)
+	bike.Start()
+	// When
+	_, err := bike.InstanceById(structComponent.Id)
+	// Then
+	if err == nil {
+		t.Errorf("InstanceById must return an error ")
+	}
+}
+
+func TestInstanceById_GivenComponentWithInvalidScope_WhenInstanceById_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: InvalidConstructor,
+		Scope:       99,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(structComponent)
+	bike.Start()
+	// When
+	_, err := bike.InstanceById(structComponent.Id)
+	// Then
+	if err == nil {
+		t.Errorf("InstanceById must return an error ")
+	}
+}
+
+func TestInstanceById_GivenComponentWithInvalidId_WhenInstanceById_ThenReturnError(t *testing.T) {
+	// Given
+	bike := NewBike()
+	bike.Start()
+	// When
+	_, err := bike.InstanceById("any-id")
+	// Then
+	if err == nil {
+		t.Errorf("InstanceById must return an error ")
 	}
 }
