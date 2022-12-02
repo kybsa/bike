@@ -1,7 +1,6 @@
 package bike
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -73,31 +72,57 @@ type bike struct {
 
 func NewBike() *bike {
 	return &bike{
-		Id:               "UUID",
 		componentsByType: make(map[reflect.Type]*Component),
 		componentsById:   make(map[string]*Component),
 		components:       make([]*Component, 0),
 	}
 }
 
-func (_self *bike) Registry(component Component) {
+func (_self *bike) Registry(component Component) error {
+
+	// Registry by id
 	if len([]rune(component.Id)) > 0 {
 		_self.componentsById[component.Id] = &component
 	}
-	componentType := reflect.TypeOf(component.Type)
-	_self.componentsByType[componentType] = &component
+
+	// Registry by Type
+	if component.Type != nil {
+		componentType := reflect.TypeOf(component.Type)
+		_self.componentsByType[componentType] = &component
+	}
+
+	// If component have constructor method
+	if component.Constructor != nil {
+		constructorType := reflect.TypeOf(component.Constructor)
+		if constructorType.NumOut() != 1 {
+			return &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
+		}
+		typeComponent := constructorType.Out(0)
+		_self.componentsByType[typeComponent] = &component
+	}
+
+	// Registry by interfaces
 	for _, inter := range component.Interfaces {
-		interfaceType := reflect.TypeOf(inter)
+		interfaceType := reflect.TypeOf(inter).Elem()
 		_self.componentsByType[interfaceType] = &component
 	}
+
+	// Init array of prototype instances
 	if component.Scope == Prototype {
 		component.prototypeInstancesValue = make([]*reflect.Value, 0)
 	}
+
+	// Add to array
 	_self.components = append(_self.components, &component)
+
+	return nil
 }
 
 func (_self *bike) InstanceByType(inputType any) (interface{}, error) {
 	_type := reflect.TypeOf(inputType)
+	if _type.Kind() == reflect.Pointer && _type.Elem().Kind() == reflect.Interface {
+		_type = _type.Elem()
+	}
 	return _self.instanceByType(_type)
 }
 
@@ -159,7 +184,13 @@ func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
 			return nil, &BikeError{messageError: message, errorCode: InvalidScope}
 		}
 	}
-	message := "Component by type:" + _type.Elem().Name() + " not found"
+	var message string
+	if _type.Kind() == reflect.Interface {
+		message = "Component by type:" + _type.Name() + " not found"
+
+	} else {
+		message = "Component by type:" + _type.Elem().Name() + " not found"
+	}
 	return nil, &BikeError{messageError: message, errorCode: ComponentNotFound}
 }
 
@@ -211,16 +242,14 @@ func (_self *bike) createComponent(component *Component) (*reflect.Value, error)
 	// Inject dependecies using struct tags
 	for i := 0; i < componentType.Elem().NumField(); i++ {
 		field := componentType.Elem().Field(i)
-		if inject, ok := field.Tag.Lookup("inject"); ok {
+		if _, ok := field.Tag.Lookup("inject"); ok {
 			fieldName := field.Name
 			id, _ := field.Tag.Lookup("id")
 			typeField := field.Type
-			fmt.Println("> Start Inject:" + inject + " FieledName:" + fieldName + " Id:" + id + " FieldType:" + typeField.Name())
 			err := _self.injectDependency(&instanceValue, &componentType, fieldName, id, &typeField)
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("< End Inject:" + inject + " FieledName:" + fieldName + " Id:" + id + " FieldType:" + typeField.Name())
 		}
 	}
 
@@ -304,8 +333,7 @@ func (_self *bike) injectDependency(instanceValue *reflect.Value, componentType 
 }
 
 func (_self *bike) Start() error {
-	for index, component := range _self.components {
-		fmt.Println(index, component)
+	for _, component := range _self.components {
 		// Create components
 		if component.Scope == Singleton {
 			instanceValue, err := _self.createComponent(component)
