@@ -110,6 +110,9 @@ func (_self *bike) Registry(component Component) error {
 	// Init array of prototype instances
 	if component.Scope == Prototype {
 		component.prototypeInstancesValue = make([]*reflect.Value, 0)
+	} else if component.Scope != Singleton {
+		message := "Invalid Scope: " + component.Scope.String()
+		return &BikeError{messageError: message, errorCode: InvalidScope}
 	}
 
 	// Add to array
@@ -148,9 +151,6 @@ func (_self *bike) InstanceById(id string) (interface{}, error) {
 			}
 			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
 			return interfaceInstance, nil
-		} else {
-			message := "Invalid Scope: " + component.Scope.String()
-			return nil, &BikeError{messageError: message, errorCode: InvalidScope}
 		}
 	}
 	message := "Component by id:" + id + " not found"
@@ -179,9 +179,6 @@ func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
 			}
 			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
 			return interfaceInstance, nil
-		} else {
-			message := "Invalid Scope: " + component.Scope.String()
-			return nil, &BikeError{messageError: message, errorCode: InvalidScope}
 		}
 	}
 	var message string

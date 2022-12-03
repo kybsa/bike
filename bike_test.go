@@ -271,3 +271,34 @@ func TestInstancebyType_GivenComponentImplementInterface_WhenInstanceByType_Then
 		t.Errorf("InstanceByType must return not nil value ")
 	}
 }
+
+func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenInstanceByTypeThenReturError(t *testing.T) {
+	// Given
+	interfaceComponent := Component{
+		Constructor: func(strucComponent *StrucComponent) *string { return nil },
+		Scope:       Prototype,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(interfaceComponent)
+	_, err := bike.InstanceByType((*string)(nil))
+	// Then
+	if err == nil {
+		t.Errorf("InstanceByType must return an error")
+	}
+}
+
+func TestRegistry_GivenComponentWithInvalidScopeWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	interfaceComponent := Component{
+		Constructor: NewInterfaceComponent,
+		Scope:       99,
+		Id:          "IdComponent",
+	}
+	bike := NewBike()
+	err := bike.Registry(interfaceComponent)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must no return an error")
+	}
+}
