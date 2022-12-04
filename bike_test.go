@@ -4,6 +4,10 @@ import (
 	"testing"
 )
 
+type NoImplemented interface {
+	NoImplemented() error
+}
+
 type InterfaceComponent interface {
 	DoAnything()
 }
@@ -36,6 +40,10 @@ func NewInterfaceComponent() InterfaceComponent {
 	return &StrucComponent{}
 }
 
+func NewValueComponent() StrucComponent {
+	return StrucComponent{}
+}
+
 func InvalidConstructor() {
 }
 
@@ -48,9 +56,9 @@ func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceByI
 	bike := NewBike()
 	// When
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// Then
-	instance, err := bike.InstanceById(structComponent.Id)
+	instance, err := container.InstanceById(structComponent.Id)
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
 	}
@@ -67,9 +75,9 @@ func TestRegistry_GivenComponentWithType_WhenRegistry_ThenReturnNotNullInstanceB
 	bike := NewBike()
 	// When
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// Then
-	instance, err := bike.InstanceByType((*StrucComponent)(nil))
+	instance, err := container.InstanceByType((*StrucComponent)(nil))
 	if err != nil {
 		t.Errorf("Error to get instance by type:%s.", err.Error())
 	}
@@ -87,9 +95,9 @@ func TestRegistry_GivenComponentWithTypeAndInterfaces_WhenRegistry_ThenReturnNot
 	bike := NewBike()
 	// When
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// Then
-	instance, err := bike.InstanceByType((*InterfaceComponent)(nil))
+	instance, err := container.InstanceByType((*InterfaceComponent)(nil))
 	if err != nil {
 		t.Errorf("Error to get instance by type:%s.", err.Error())
 	}
@@ -108,8 +116,8 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 	bike := NewBike()
 	// When
 	bike.Registry(structComponent)
-	bike.Start()
-	instance, _ := bike.InstanceByType((*StrucComponent)(nil))
+	container, _ := bike.Start()
+	instance, _ := container.InstanceByType((*StrucComponent)(nil))
 	strucComponentInstance := (instance).(*StrucComponent)
 	bike.Stop()
 
@@ -129,8 +137,8 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	bike := NewBike()
 	// When
 	bike.Registry(structComponent)
-	bike.Start()
-	instance, _ := bike.InstanceByType((*StrucComponent)(nil))
+	container, _ := bike.Start()
+	instance, _ := container.InstanceByType((*StrucComponent)(nil))
 	strucComponentInstance := (instance).(*StrucComponent)
 	strucComponentInstance.StopStatus = false
 	bike.Stop()
@@ -150,9 +158,9 @@ func TestInstanceById_GivenComponentWithConstructorAndIdAndScopeSingleton_WhenRe
 	bike := NewBike()
 	// When
 	bike.Registry(interfaceComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// Then
-	instance, err := bike.InstanceById(interfaceComponent.Id)
+	instance, err := container.InstanceById(interfaceComponent.Id)
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
 	}
@@ -170,9 +178,9 @@ func TestInstanceById_GivenComponentWithConstructorAndIdAndScopePrototype_WhenIn
 	}
 	bike := NewBike()
 	bike.Registry(interfaceComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	instance, err := bike.InstanceById(interfaceComponent.Id)
+	instance, err := container.InstanceById(interfaceComponent.Id)
 	// Then
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
@@ -191,9 +199,9 @@ func TestInstanceById_GivenComponentWithIdAndScopePrototype_WhenInstanceById_The
 	}
 	bike := NewBike()
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	instance, err := bike.InstanceById(structComponent.Id)
+	instance, err := container.InstanceById(structComponent.Id)
 	// Then
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
@@ -212,9 +220,9 @@ func TestInstanceById_GivenComponentWithInvalidConstructor_WhenInstanceById_Then
 	}
 	bike := NewBike()
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	_, err := bike.InstanceById(structComponent.Id)
+	_, err := container.InstanceById(structComponent.Id)
 	// Then
 	if err == nil {
 		t.Errorf("InstanceById must return an error ")
@@ -230,9 +238,9 @@ func TestInstanceById_GivenComponentWithInvalidScope_WhenInstanceById_ThenReturn
 	}
 	bike := NewBike()
 	bike.Registry(structComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	_, err := bike.InstanceById(structComponent.Id)
+	_, err := container.InstanceById(structComponent.Id)
 	// Then
 	if err == nil {
 		t.Errorf("InstanceById must return an error ")
@@ -242,9 +250,9 @@ func TestInstanceById_GivenComponentWithInvalidScope_WhenInstanceById_ThenReturn
 func TestInstanceById_GivenComponentWithInvalidId_WhenInstanceById_ThenReturnError(t *testing.T) {
 	// Given
 	bike := NewBike()
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	_, err := bike.InstanceById("any-id")
+	_, err := container.InstanceById("any-id")
 	// Then
 	if err == nil {
 		t.Errorf("InstanceById must return an error ")
@@ -260,9 +268,9 @@ func TestInstancebyType_GivenComponentImplementInterface_WhenInstanceByType_Then
 	}
 	bike := NewBike()
 	bike.Registry(interfaceComponent)
-	bike.Start()
+	container, _ := bike.Start()
 	// When
-	instance, err := bike.InstanceByType((*InterfaceComponent)(nil))
+	instance, err := container.InstanceByType((*InterfaceComponent)(nil))
 	// Then
 	if err != nil {
 		t.Errorf("InstanceByType must no return an error ")
@@ -281,10 +289,42 @@ func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenIn
 	}
 	bike := NewBike()
 	bike.Registry(interfaceComponent)
-	_, err := bike.InstanceByType((*string)(nil))
+	container, _ := bike.Start()
+	_, err := container.InstanceByType((*string)(nil))
 	// Then
 	if err == nil {
 		t.Errorf("InstanceByType must return an error")
+	}
+}
+
+func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceThenReturError(t *testing.T) {
+	// Given
+	interfaceComponent := Component{
+		Type:  (*StrucComponent)(nil),
+		Scope: Prototype,
+		Id:    "IdComponent",
+	}
+	bike := NewBike()
+	bike.Registry(interfaceComponent)
+	container, _ := bike.Start()
+	_, err := container.InstanceByType((*NoImplemented)(nil))
+	// Then
+	if err == nil {
+		t.Errorf("InstanceByType must return an error")
+	}
+}
+
+func TestInstanceByType_GivenComponentConstructorNoReturnPointerWhenRegistryThenReturError(t *testing.T) {
+	// Given
+	constructorComponent := Component{
+		Constructor: NewValueComponent,
+		Scope:       Singleton,
+	}
+	bike := NewBike()
+	err := bike.Registry(constructorComponent)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must return an error")
 	}
 }
 

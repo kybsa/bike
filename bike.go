@@ -1,6 +1,7 @@
 package bike
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -52,6 +53,7 @@ const (
 	InvalidNumArgOnPostConstruct         BikeErrorCode = 8
 	InvalidNumArgOnDestroy               BikeErrorCode = 9
 	ConstructorInvalidNumberReturnValues BikeErrorCode = 10
+	ConstructorReturnNoPointerValue      BikeErrorCode = 11
 )
 
 type BikeError struct {
@@ -63,22 +65,25 @@ func (_self *BikeError) Error() string {
 	return _self.messageError
 }
 
-type bike struct {
-	Id               string
+type Bike struct {
 	componentsByType map[reflect.Type]*Component
 	componentsById   map[string]*Component
 	components       []*Component
 }
 
-func NewBike() *bike {
-	return &bike{
+type Container struct {
+	bike *Bike
+}
+
+func NewBike() *Bike {
+	return &Bike{
 		componentsByType: make(map[reflect.Type]*Component),
 		componentsById:   make(map[string]*Component),
 		components:       make([]*Component, 0),
 	}
 }
 
-func (_self *bike) Registry(component Component) error {
+func (_self *Bike) Registry(component Component) error {
 
 	// Registry by id
 	if len([]rune(component.Id)) > 0 {
@@ -98,6 +103,11 @@ func (_self *bike) Registry(component Component) error {
 			return &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
 		}
 		typeComponent := constructorType.Out(0)
+
+		if typeComponent.Kind() != reflect.Pointer && typeComponent.Kind() != reflect.Interface {
+			return &BikeError{messageError: "Constructor must return a pointer o interface value", errorCode: ConstructorReturnNoPointerValue}
+		}
+
 		_self.componentsByType[typeComponent] = &component
 	}
 
@@ -121,7 +131,7 @@ func (_self *bike) Registry(component Component) error {
 	return nil
 }
 
-func (_self *bike) InstanceByType(inputType any) (interface{}, error) {
+func (_self *Bike) instanceByTypeAny(inputType any) (interface{}, error) {
 	_type := reflect.TypeOf(inputType)
 	if _type.Kind() == reflect.Pointer && _type.Elem().Kind() == reflect.Interface {
 		_type = _type.Elem()
@@ -129,7 +139,7 @@ func (_self *bike) InstanceByType(inputType any) (interface{}, error) {
 	return _self.instanceByType(_type)
 }
 
-func (_self *bike) InstanceById(id string) (interface{}, error) {
+func (_self *Bike) instanceById(id string) (interface{}, error) {
 	component, ok := _self.componentsById[id]
 	if ok {
 		if component.Scope == Singleton {
@@ -157,15 +167,12 @@ func (_self *bike) InstanceById(id string) (interface{}, error) {
 	return nil, &BikeError{messageError: message, errorCode: ComponentNotFound}
 }
 
-func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
+func (_self *Bike) instanceByType(_type reflect.Type) (interface{}, error) {
 	component, ok := _self.componentsByType[_type]
+	fmt.Println(component)
 	if ok {
 		if component.Scope == Singleton {
-			if component.instanceValue.Elem().CanAddr() {
-				return component.instanceValue.Elem().Addr().Interface(), nil
-			} else {
-				return component.instanceValue.Elem().Interface(), nil
-			}
+			return component.instanceValue.Elem().Addr().Interface(), nil
 		} else if component.Scope == Prototype {
 			instance, err := _self.createComponent(component)
 			if err != nil {
@@ -191,7 +198,7 @@ func (_self *bike) instanceByType(_type reflect.Type) (interface{}, error) {
 	return nil, &BikeError{messageError: message, errorCode: ComponentNotFound}
 }
 
-func (_self *bike) createComponent(component *Component) (*reflect.Value, error) {
+func (_self *Bike) createComponent(component *Component) (*reflect.Value, error) {
 
 	// Create component by contructor method
 	if component.Constructor != nil {
@@ -266,7 +273,7 @@ func (_self *bike) createComponent(component *Component) (*reflect.Value, error)
 	return &instanceValue, nil
 }
 
-func (_self *bike) injectDependency(instanceValue *reflect.Value, componentType *reflect.Type, key string, id string, dependencyType *reflect.Type) error {
+func (_self *Bike) injectDependency(instanceValue *reflect.Value, componentType *reflect.Type, key string, id string, dependencyType *reflect.Type) error {
 	var dependency *reflect.Value = nil
 	// Inject by id dependency
 	if len([]rune(id)) > 0 {
@@ -329,21 +336,21 @@ func (_self *bike) injectDependency(instanceValue *reflect.Value, componentType 
 	return nil
 }
 
-func (_self *bike) Start() error {
+func (_self *Bike) Start() (*Container, error) {
 	for _, component := range _self.components {
 		// Create components
 		if component.Scope == Singleton {
 			instanceValue, err := _self.createComponent(component)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			component.instanceValue = instanceValue
 		}
 	}
-	return nil
+	return &Container{bike: _self}, nil
 }
 
-func (_self *bike) Stop() error {
+func (_self *Bike) Stop() error {
 	var lastError error
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
@@ -366,4 +373,12 @@ func (_self *bike) Stop() error {
 		}
 	}
 	return lastError
+}
+
+func (_self *Container) InstanceByType(inputType any) (interface{}, error) {
+	return _self.bike.instanceByTypeAny(inputType)
+}
+
+func (_self *Container) InstanceById(id string) (interface{}, error) {
+	return _self.bike.instanceById(id)
 }
