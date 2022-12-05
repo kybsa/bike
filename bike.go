@@ -1,7 +1,6 @@
 package bike
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -169,7 +168,6 @@ func (_self *Bike) instanceById(id string) (interface{}, error) {
 
 func (_self *Bike) instanceByType(_type reflect.Type) (interface{}, error) {
 	component, ok := _self.componentsByType[_type]
-	fmt.Println(component)
 	if ok {
 		if component.Scope == Singleton {
 			return component.instanceValue.Elem().Addr().Interface(), nil
