@@ -53,6 +53,7 @@ const (
 	InvalidNumArgOnDestroy               BikeErrorCode = 9
 	ConstructorInvalidNumberReturnValues BikeErrorCode = 10
 	ConstructorReturnNoPointerValue      BikeErrorCode = 11
+	ComponentTypeAndConstructorNull      BikeErrorCode = 12
 )
 
 type BikeError struct {
@@ -108,6 +109,10 @@ func (_self *Bike) Registry(component Component) error {
 		}
 
 		_self.componentsByType[typeComponent] = &component
+	}
+
+	if component.Type == nil && component.Constructor == nil {
+		return &BikeError{messageError: "Constructor and Type null", errorCode: ComponentTypeAndConstructorNull}
 	}
 
 	// Registry by interfaces
@@ -223,10 +228,6 @@ func (_self *Bike) createComponent(component *Component) (*reflect.Value, error)
 		instanceResult := constructorValue.Call(args)
 		component.instanceValue = &instanceResult[0]
 		return component.instanceValue, nil
-	}
-
-	if component.Type == nil {
-		return nil, &BikeError{messageError: "Component.Type must be not null", errorCode: ComponentTypeNull}
 	}
 
 	componentType := reflect.TypeOf(component.Type)

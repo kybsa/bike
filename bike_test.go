@@ -47,6 +47,21 @@ func NewValueComponent() StrucComponent {
 func InvalidConstructor() {
 }
 
+type A struct {
+}
+
+type B struct {
+	a *A
+}
+
+func NewA() *A {
+	return &A{}
+}
+
+func NewB(a *A) *B {
+	return &B{a: a}
+}
+
 func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceById(t *testing.T) {
 	// Given
 	structComponent := Component{
@@ -340,5 +355,41 @@ func TestRegistry_GivenComponentWithInvalidScopeWhenRegistryThenReturnError(t *t
 	// Then
 	if err == nil {
 		t.Errorf("Registry must no return an error")
+	}
+}
+
+func TestRegistry_GivenComponentNullTypeAndConstructorWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Scope: Singleton,
+	}
+	// When
+	bike := NewBike()
+	err := bike.Registry(component)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must return an error")
+	}
+}
+
+func TestInstanceByType_ComponentWithADependencyGivenWhenInstanceByTypeThenReturnInstance(t *testing.T) {
+	// Given
+	bike := NewBike()
+	componentA := Component{
+		Constructor: NewA,
+		Scope:       Singleton,
+	}
+	bike.Registry(componentA)
+	componentB := Component{
+		Constructor: NewB,
+		Scope:       Singleton,
+	}
+	bike.Registry(componentB)
+	container, _ := bike.Start()
+	// When
+	_, err := container.InstanceByType((*B)(nil))
+	// Then
+	if err != nil {
+		t.Errorf("InstanceByType must no return an error")
 	}
 }
