@@ -40,6 +40,10 @@ func NewInterfaceComponent() InterfaceComponent {
 	return &StrucComponent{}
 }
 
+func NewComponent() *StrucComponent {
+	return &StrucComponent{}
+}
+
 func NewValueComponent() StrucComponent {
 	return StrucComponent{}
 }
@@ -65,8 +69,8 @@ func NewB(a *A) *B {
 func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceById(t *testing.T) {
 	// Given
 	structComponent := Component{
-		Type: (*StrucComponent)(nil),
-		Id:   "IdStructComponent",
+		Constructor: NewComponent,
+		Id:          "IdStructComponent",
 	}
 	bike := NewBike()
 	// When
@@ -82,30 +86,11 @@ func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceByI
 	}
 }
 
-func TestRegistry_GivenComponentWithType_WhenRegistry_ThenReturnNotNullInstanceByType(t *testing.T) {
-	// Given
-	structComponent := Component{
-		Type: (*StrucComponent)(nil),
-	}
-	bike := NewBike()
-	// When
-	bike.Registry(structComponent)
-	container, _ := bike.Start()
-	// Then
-	instance, err := container.InstanceByType((*StrucComponent)(nil))
-	if err != nil {
-		t.Errorf("Error to get instance by type:%s.", err.Error())
-	}
-	if instance == nil {
-		t.Errorf("InstanceByType return nil.")
-	}
-}
-
 func TestRegistry_GivenComponentWithTypeAndInterfaces_WhenRegistry_ThenReturnNotNullInstanceByInterfaceType(t *testing.T) {
 	// Given
 	structComponent := Component{
-		Type:       (*StrucComponent)(nil),
-		Interfaces: []any{(*InterfaceComponent)(nil)},
+		Constructor: NewComponent,
+		Interfaces:  []any{(*InterfaceComponent)(nil)},
 	}
 	bike := NewBike()
 	// When
@@ -124,7 +109,7 @@ func TestRegistry_GivenComponentWithTypeAndInterfaces_WhenRegistry_ThenReturnNot
 func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *testing.T) {
 	// Given
 	structComponent := Component{
-		Type:          (*StrucComponent)(nil),
+		Constructor:   NewComponent,
 		Scope:         Prototype,
 		PostConstruct: "Init",
 	}
@@ -145,9 +130,9 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t *testing.T) {
 	// Given
 	structComponent := Component{
-		Type:    (*StrucComponent)(nil),
-		Scope:   Prototype,
-		Destroy: "Stop",
+		Constructor: NewComponent,
+		Scope:       Prototype,
+		Destroy:     "Stop",
 	}
 	bike := NewBike()
 	// When
@@ -208,9 +193,9 @@ func TestInstanceById_GivenComponentWithConstructorAndIdAndScopePrototype_WhenIn
 func TestInstanceById_GivenComponentWithIdAndScopePrototype_WhenInstanceById_ThenReturnNotNull(t *testing.T) {
 	// Given
 	structComponent := Component{
-		Type:  (*StrucComponent)(nil),
-		Scope: Prototype,
-		Id:    "IdComponent",
+		Constructor: NewComponent,
+		Scope:       Prototype,
+		Id:          "IdComponent",
 	}
 	bike := NewBike()
 	bike.Registry(structComponent)
@@ -315,9 +300,9 @@ func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenIn
 func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceThenReturError(t *testing.T) {
 	// Given
 	interfaceComponent := Component{
-		Type:  (*StrucComponent)(nil),
-		Scope: Prototype,
-		Id:    "IdComponent",
+		Constructor: NewValueComponent,
+		Scope:       Prototype,
+		Id:          "IdComponent",
 	}
 	bike := NewBike()
 	bike.Registry(interfaceComponent)

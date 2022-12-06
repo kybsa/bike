@@ -27,7 +27,6 @@ type Dependency struct {
 
 type Component struct {
 	Id                      string
-	Type                    any
 	Interfaces              []any
 	Scope                   Scope
 	Dependencies            map[string]Dependency
@@ -90,30 +89,22 @@ func (_self *Bike) Registry(component Component) error {
 		_self.componentsById[component.Id] = &component
 	}
 
-	// Registry by Type
-	if component.Type != nil {
-		componentType := reflect.TypeOf(component.Type)
-		_self.componentsByType[componentType] = &component
+	// If component have not constructor method
+	if component.Constructor == nil {
+		return &BikeError{messageError: "Constructor must no be nill", errorCode: ComponentTypeAndConstructorNull}
 	}
 
-	// If component have constructor method
-	if component.Constructor != nil {
-		constructorType := reflect.TypeOf(component.Constructor)
-		if constructorType.NumOut() != 1 {
-			return &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
-		}
-		typeComponent := constructorType.Out(0)
+	constructorType := reflect.TypeOf(component.Constructor)
+	if constructorType.NumOut() != 1 {
+		return &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
+	}
+	typeComponent := constructorType.Out(0)
 
-		if typeComponent.Kind() != reflect.Pointer && typeComponent.Kind() != reflect.Interface {
-			return &BikeError{messageError: "Constructor must return a pointer o interface value", errorCode: ConstructorReturnNoPointerValue}
-		}
-
-		_self.componentsByType[typeComponent] = &component
+	if typeComponent.Kind() != reflect.Pointer && typeComponent.Kind() != reflect.Interface {
+		return &BikeError{messageError: "Constructor must return a pointer o interface value", errorCode: ConstructorReturnNoPointerValue}
 	}
 
-	if component.Type == nil && component.Constructor == nil {
-		return &BikeError{messageError: "Constructor and Type null", errorCode: ComponentTypeAndConstructorNull}
-	}
+	_self.componentsByType[typeComponent] = &component
 
 	// Registry by interfaces
 	for _, inter := range component.Interfaces {
@@ -202,62 +193,33 @@ func (_self *Bike) instanceByType(_type reflect.Type) (interface{}, error) {
 }
 
 func (_self *Bike) createComponent(component *Component) (*reflect.Value, error) {
-
 	// Create component by contructor method
-	if component.Constructor != nil {
-		constructorValue := reflect.ValueOf(component.Constructor)
-		constructorType := reflect.TypeOf(component.Constructor)
+	constructorValue := reflect.ValueOf(component.Constructor)
+	constructorType := reflect.TypeOf(component.Constructor)
 
-		if constructorType.NumOut() != 1 {
-			return nil, &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
-		}
-
-		// Search dependecies
-		args := make([]reflect.Value, constructorType.NumIn())
-		for i := 0; i < constructorType.NumIn(); i++ {
-			inputType := constructorType.In(i)
-			inputArg, err := _self.instanceByType(inputType)
-			if err == nil {
-				args[i] = reflect.ValueOf(inputArg)
-			} else {
-				message := "Dependecy Type: [" + inputType.Name() + "] required by function" + constructorType.Name() + "] not found "
-				return nil, &BikeError{messageError: message, errorCode: DependecyByTypeNotFound}
-			}
-		}
-		// Create component with dependencies
-		instanceResult := constructorValue.Call(args)
-		component.instanceValue = &instanceResult[0]
-		return component.instanceValue, nil
+	if constructorType.NumOut() != 1 {
+		return nil, &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
 	}
 
-	componentType := reflect.TypeOf(component.Type)
-	instanceValue := reflect.New(componentType.Elem())
-
-	//  Inject dependencies using field Component.Dependencies
-	for fieldName, dependencyConfig := range component.Dependencies {
-		dependencyType := reflect.TypeOf(dependencyConfig.Type)
-		err := _self.injectDependency(&instanceValue, &componentType, fieldName, dependencyConfig.Id, &dependencyType)
-		if err != nil {
-			return nil, err
+	// Search dependecies
+	args := make([]reflect.Value, constructorType.NumIn())
+	for i := 0; i < constructorType.NumIn(); i++ {
+		inputType := constructorType.In(i)
+		inputArg, err := _self.instanceByType(inputType)
+		if err == nil {
+			args[i] = reflect.ValueOf(inputArg)
+		} else {
+			message := "Dependecy Type: [" + inputType.Name() + "] required by function" + constructorType.Name() + "] not found "
+			return nil, &BikeError{messageError: message, errorCode: DependecyByTypeNotFound}
 		}
 	}
-
-	// Inject dependecies using struct tags
-	for i := 0; i < componentType.Elem().NumField(); i++ {
-		field := componentType.Elem().Field(i)
-		if _, ok := field.Tag.Lookup("inject"); ok {
-			fieldName := field.Name
-			id, _ := field.Tag.Lookup("id")
-			typeField := field.Type
-			err := _self.injectDependency(&instanceValue, &componentType, fieldName, id, &typeField)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
+	// Create component with dependencies
+	instanceResult := constructorValue.Call(args)
+	component.instanceValue = &instanceResult[0]
 
 	// Call init methods
 	// Search Components methods to pointer struct
+	componentType := constructorType.Out(0)
 	if len([]rune(component.PostConstruct)) > 0 {
 		method, ok := componentType.MethodByName(component.PostConstruct)
 		if !ok {
@@ -266,73 +228,10 @@ func (_self *Bike) createComponent(component *Component) (*reflect.Value, error)
 		if method.Type.NumIn() != 1 {
 			return nil, &BikeError{messageError: "Invalid argument number of Component.PostConstruct. PostConstruct:" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
 		}
-		method.Func.Call([]reflect.Value{instanceValue})
+		method.Func.Call([]reflect.Value{*component.instanceValue})
 	}
 
-	return &instanceValue, nil
-}
-
-func (_self *Bike) injectDependency(instanceValue *reflect.Value, componentType *reflect.Type, key string, id string, dependencyType *reflect.Type) error {
-	var dependency *reflect.Value = nil
-	// Inject by id dependency
-	if len([]rune(id)) > 0 {
-		dependencyById, okById := _self.componentsById[id]
-		if okById {
-			if dependencyById.Scope == Singleton {
-				dependency = dependencyById.instanceValue
-			} else if dependencyById.Scope == Prototype {
-				var err error
-				dependency, err = _self.createComponent(dependencyById)
-				dependencyById.prototypeInstancesValue = append(dependencyById.prototypeInstancesValue, dependency)
-				if err != nil {
-					return err
-				}
-			} else {
-				message := "Component with id " + id + " using invalid Scope: " + dependencyById.Scope.String()
-				return &BikeError{messageError: message, errorCode: InvalidScope}
-			}
-		} else {
-			message := "Dependecy: [" + key + "] required by [" + (*componentType).Elem().Name() + "] with id [" + id + "] not found "
-			return &BikeError{messageError: message, errorCode: DependecyByIdNotFound}
-		}
-	}
-
-	// Inject by Type
-	if dependencyType == nil {
-		message := "Invalid dependecy with Type nil"
-		return &BikeError{messageError: message, errorCode: NullDependencyConfigType}
-	} else if dependency == nil {
-		dependencyByType, okByType := _self.componentsByType[*dependencyType]
-		if okByType {
-			if dependencyByType.Scope == Singleton {
-				dependency = dependencyByType.instanceValue
-			} else if dependencyByType.Scope == Prototype {
-				var err error
-				dependency, err = _self.createComponent(dependencyByType)
-				dependencyByType.prototypeInstancesValue = append(dependencyByType.prototypeInstancesValue, dependency)
-				if err != nil {
-					return err
-				}
-			} else {
-				message := "Component with type " + (*componentType).Elem().Name() + " using invalid Scope: " + dependencyByType.Scope.String()
-				return &BikeError{messageError: message, errorCode: InvalidScope}
-			}
-		}
-	}
-
-	if dependency == nil {
-		message := "Dependecy: [" + key + "] required by [" + (*componentType).Elem().Name() + "] not found "
-		return &BikeError{messageError: message, errorCode: DependecyByTypeNotFound}
-	}
-
-	fieldValue := instanceValue.Elem().FieldByName(key)
-	if !fieldValue.IsValid() {
-		message := "Field: [" + key + "] no found in [" + (*componentType).Elem().Name() + "] "
-		return &BikeError{messageError: message, errorCode: InvalidField}
-	}
-	fieldValue.Set(dependency.Elem().Addr())
-
-	return nil
+	return component.instanceValue, nil
 }
 
 func (_self *Bike) Start() (*Container, error) {
@@ -353,7 +252,7 @@ func (_self *Bike) Stop() error {
 	var lastError error
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
-			componentType := reflect.TypeOf(component.Type)
+			componentType := reflect.TypeOf(component.Constructor).Out(0)
 			method, ok := componentType.MethodByName(component.Destroy)
 			if !ok {
 				lastError = &BikeError{messageError: "Error to stop bike. Invalid Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
