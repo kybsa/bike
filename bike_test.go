@@ -29,6 +29,9 @@ func (_self *StrucComponent) Init() {
 	_self.InitStatus = true
 }
 
+func (_self *StrucComponent) InvalidInit(param string) {
+}
+
 func (_self *StrucComponent) Stop() {
 	_self.StopStatus = true
 }
@@ -132,6 +135,27 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	structComponent := Component{
 		Constructor: NewComponent,
 		Scope:       Prototype,
+		Destroy:     "Stop",
+	}
+	bike := NewBike()
+	// When
+	bike.Registry(structComponent)
+	container, _ := bike.Start()
+	instance, _ := container.InstanceByType((*StrucComponent)(nil))
+	strucComponentInstance := (instance).(*StrucComponent)
+	strucComponentInstance.StopStatus = false
+	bike.Stop()
+	// Then
+	if strucComponentInstance.StopStatus == false {
+		t.Errorf("Bike doesn't call stop method StrucComponent")
+	}
+}
+
+func TestStop_GivenComponentWithScopeSingleton_WhenStop_ThenCallDestroyMethod(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
 		Destroy:     "Stop",
 	}
 	bike := NewBike()
@@ -376,5 +400,131 @@ func TestInstanceByType_ComponentWithADependencyGivenWhenInstanceByTypeThenRetur
 	// Then
 	if err != nil {
 		t.Errorf("InstanceByType must no return an error")
+	}
+}
+
+func TestRegistry_GivenComponentInvalidPostConstructNameWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor:   NewComponent,
+		Scope:         Singleton,
+		PostConstruct: "StartInit",
+	}
+	bike := NewBike()
+	// When
+	err := bike.Registry(component)
+	// Then
+	if err == nil {
+		t.Errorf("Start must return an error")
+	}
+}
+
+func TestRegistry_GivenComponentInvalidPostConstructWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor:   NewComponent,
+		Scope:         Singleton,
+		PostConstruct: "InvalidInit",
+	}
+	bike := NewBike()
+	// When
+	err := bike.Registry(component)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must return an error")
+	}
+}
+
+func TestRegistry_GivenComponentInvalidDestroyNameWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		Destroy:     "StartInit",
+	}
+	bike := NewBike()
+	// When
+	err := bike.Registry(component)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must return an error")
+	}
+}
+
+func TestRegistry_GivenComponentInvalidDestroyWhenRegistryThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		Destroy:     "InvalidInit",
+	}
+	bike := NewBike()
+	// When
+	err := bike.Registry(component)
+	// Then
+	if err == nil {
+		t.Errorf("Registry must return an error")
+	}
+}
+
+func TestInstanceById_GivenComponentInvalidDependenciesWhenInstanceByIdThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewB,
+		Scope:       Prototype,
+		Id:          "IdComponent",
+	}
+	// When
+	bike := NewBike()
+	bike.Registry(component)
+	container, _ := bike.Start()
+	// Then
+	_, err := container.InstanceById(component.Id)
+	if err == nil {
+		t.Errorf("InstanceById must return an error")
+	}
+}
+
+func TestInstanceById_GivenComponentInvalidDependenciesWhenStartIdThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewB,
+		Scope:       Singleton,
+		Id:          "IdComponent",
+	}
+	// When
+	bike := NewBike()
+	bike.Registry(component)
+	_, err := bike.Start()
+	if err == nil {
+		t.Errorf("InstanceById must return an error")
+	}
+}
+
+func TestBikeError_GivenBikeErrorWhenErrorThenReturnErrorMessage(t *testing.T) {
+	// Given
+	bikeError := BikeError{
+		messageError: "message",
+		errorCode:    ComponentConstructorNull,
+	}
+	// When
+	currentMessage := bikeError.Error()
+	// Then
+	if currentMessage != bikeError.messageError {
+		t.Errorf("Error must return expected value")
+	}
+}
+
+func TestBikeError_GivenBikeErrorWhenErrorCodeThenReturnErrorCode(t *testing.T) {
+	// Given
+	bikeError := BikeError{
+		messageError: "message",
+		errorCode:    ComponentConstructorNull,
+	}
+	// When
+	currentError := bikeError.ErrorCode()
+	// Then
+	if currentError != ComponentConstructorNull {
+		t.Errorf("ErrorCode must return expected value")
 	}
 }

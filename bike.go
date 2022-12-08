@@ -40,19 +40,15 @@ type Component struct {
 type BikeErrorCode uint8
 
 const (
-	NotFound                             BikeErrorCode = 0
-	DependecyByIdNotFound                BikeErrorCode = 1
-	NullDependencyConfigType             BikeErrorCode = 2
-	DependecyByTypeNotFound              BikeErrorCode = 3
-	InvalidField                         BikeErrorCode = 4
-	ComponentTypeNull                    BikeErrorCode = 5
-	InvalidScope                         BikeErrorCode = 6
-	ComponentNotFound                    BikeErrorCode = 7
-	InvalidNumArgOnPostConstruct         BikeErrorCode = 8
-	InvalidNumArgOnDestroy               BikeErrorCode = 9
-	ConstructorInvalidNumberReturnValues BikeErrorCode = 10
-	ConstructorReturnNoPointerValue      BikeErrorCode = 11
-	ComponentTypeAndConstructorNull      BikeErrorCode = 12
+	DependecyByIdNotFound                BikeErrorCode = 0
+	DependecyByTypeNotFound              BikeErrorCode = 1
+	InvalidScope                         BikeErrorCode = 2
+	ComponentNotFound                    BikeErrorCode = 3
+	InvalidNumArgOnPostConstruct         BikeErrorCode = 4
+	InvalidNumArgOnDestroy               BikeErrorCode = 5
+	ConstructorInvalidNumberReturnValues BikeErrorCode = 6
+	ConstructorReturnNoPointerValue      BikeErrorCode = 7
+	ComponentConstructorNull             BikeErrorCode = 8
 )
 
 type BikeError struct {
@@ -62,6 +58,10 @@ type BikeError struct {
 
 func (_self *BikeError) Error() string {
 	return _self.messageError
+}
+
+func (_self *BikeError) ErrorCode() BikeErrorCode {
+	return _self.errorCode
 }
 
 type Bike struct {
@@ -84,24 +84,50 @@ func NewBike() *Bike {
 
 func (_self *Bike) Registry(component Component) error {
 
-	// Registry by id
-	if len([]rune(component.Id)) > 0 {
-		_self.componentsById[component.Id] = &component
-	}
-
-	// If component have not constructor method
+	// Check if component have not constructor method
 	if component.Constructor == nil {
-		return &BikeError{messageError: "Constructor must no be nill", errorCode: ComponentTypeAndConstructorNull}
+		return &BikeError{messageError: "Constructor must no be nill", errorCode: ComponentConstructorNull}
 	}
 
+	// Check Constructor component
 	constructorType := reflect.TypeOf(component.Constructor)
 	if constructorType.NumOut() != 1 {
 		return &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
 	}
 	typeComponent := constructorType.Out(0)
 
+	// Check return Constructor value
 	if typeComponent.Kind() != reflect.Pointer && typeComponent.Kind() != reflect.Interface {
 		return &BikeError{messageError: "Constructor must return a pointer o interface value", errorCode: ConstructorReturnNoPointerValue}
+	}
+
+	// Check PostConstruct
+	if len([]rune(component.PostConstruct)) > 0 {
+		componentType := constructorType.Out(0)
+		method, ok := componentType.MethodByName(component.PostConstruct)
+		if !ok {
+			return &BikeError{messageError: "Component.PostConstruct [" + component.PostConstruct + "] not found" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
+		}
+		if method.Type.NumIn() != 1 {
+			return &BikeError{messageError: "Invalid argument number of Component.PostConstruct. PostConstruct:" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
+		}
+	}
+
+	// Check Destroy
+	if len([]rune(component.Destroy)) > 0 {
+		componentType := constructorType.Out(0)
+		method, ok := componentType.MethodByName(component.Destroy)
+		if !ok {
+			return &BikeError{messageError: "Invalid Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
+		}
+		if method.Type.NumIn() != 1 {
+			return &BikeError{messageError: "Invalid number arguments of Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
+		}
+	}
+
+	// Registry by id
+	if len([]rune(component.Id)) > 0 {
+		_self.componentsById[component.Id] = &component
 	}
 
 	_self.componentsByType[typeComponent] = &component
@@ -197,10 +223,6 @@ func (_self *Bike) createComponent(component *Component) (*reflect.Value, error)
 	constructorValue := reflect.ValueOf(component.Constructor)
 	constructorType := reflect.TypeOf(component.Constructor)
 
-	if constructorType.NumOut() != 1 {
-		return nil, &BikeError{messageError: "Constructor must return one value", errorCode: ConstructorInvalidNumberReturnValues}
-	}
-
 	// Search dependecies
 	args := make([]reflect.Value, constructorType.NumIn())
 	for i := 0; i < constructorType.NumIn(); i++ {
@@ -221,13 +243,7 @@ func (_self *Bike) createComponent(component *Component) (*reflect.Value, error)
 	// Search Components methods to pointer struct
 	componentType := constructorType.Out(0)
 	if len([]rune(component.PostConstruct)) > 0 {
-		method, ok := componentType.MethodByName(component.PostConstruct)
-		if !ok {
-			return nil, &BikeError{messageError: "Component.PostConstruct [" + component.PostConstruct + "] not found" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
-		}
-		if method.Type.NumIn() != 1 {
-			return nil, &BikeError{messageError: "Invalid argument number of Component.PostConstruct. PostConstruct:" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
-		}
+		method, _ := componentType.MethodByName(component.PostConstruct)
 		method.Func.Call([]reflect.Value{*component.instanceValue})
 	}
 
@@ -253,14 +269,7 @@ func (_self *Bike) Stop() error {
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
 			componentType := reflect.TypeOf(component.Constructor).Out(0)
-			method, ok := componentType.MethodByName(component.Destroy)
-			if !ok {
-				lastError = &BikeError{messageError: "Error to stop bike. Invalid Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
-			}
-			if method.Type.NumIn() != 1 {
-				lastError = &BikeError{messageError: "Error to stop bike. Invalid number arguments of Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
-				continue
-			}
+			method, _ := componentType.MethodByName(component.Destroy)
 			if component.Scope == Singleton {
 				method.Func.Call([]reflect.Value{*component.instanceValue})
 			} else if component.Scope == Prototype {
