@@ -45,3 +45,10 @@ jobs:
                 echo "Failed"
                 exit 1
             fi
+  golangci-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: reviewdog/action-golangci-lint@v2          
