@@ -32,7 +32,7 @@ jobs:
 
     - name: Test coverage
       env:
-          TESTCOVERAGE_THRESHOLD: 100
+          TESTCOVERAGE_THRESHOLD: 99
       run: |
             echo "Test Coverage."
             echo "Threshold             : $TESTCOVERAGE_THRESHOLD %"
