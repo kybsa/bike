@@ -73,14 +73,17 @@ func TestRegistry_GivenComponentWithId_WhenRegistry_ThenReturnNotNullInstanceByI
 	// Given
 	structComponent := Component{
 		Constructor: NewComponent,
-		Id:          "IdStructComponent",
+		ID:          "IdStructComponent",
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// Then
-	instance, err := container.InstanceById(structComponent.Id)
+	instance, err := container.InstanceByID(structComponent.ID)
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
 	}
@@ -97,7 +100,10 @@ func TestRegistry_GivenComponentWithTypeAndInterfaces_WhenRegistry_ThenReturnNot
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// Then
 	instance, err := container.InstanceByType((*InterfaceComponent)(nil))
@@ -118,11 +124,17 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	instance, _ := container.InstanceByType((*StrucComponent)(nil))
 	strucComponentInstance := (instance).(*StrucComponent)
-	bike.Stop()
+	stopErr := bike.Stop()
+	if stopErr != nil {
+		t.Errorf("Error to Stop :%s.", stopErr.Error())
+	}
 
 	// Then
 	if strucComponentInstance.InitStatus == false {
@@ -139,12 +151,18 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	instance, _ := container.InstanceByType((*StrucComponent)(nil))
 	strucComponentInstance := (instance).(*StrucComponent)
 	strucComponentInstance.StopStatus = false
-	bike.Stop()
+	stopErr := bike.Stop()
+	if stopErr != nil {
+		t.Errorf("Error to Stop :%s.", stopErr.Error())
+	}
 	// Then
 	if strucComponentInstance.StopStatus == false {
 		t.Errorf("Bike doesn't call stop method StrucComponent")
@@ -160,12 +178,18 @@ func TestStop_GivenComponentWithScopeSingleton_WhenStop_ThenCallDestroyMethod(t 
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	instance, _ := container.InstanceByType((*StrucComponent)(nil))
 	strucComponentInstance := (instance).(*StrucComponent)
 	strucComponentInstance.StopStatus = false
-	bike.Stop()
+	stopErr := bike.Stop()
+	if stopErr != nil {
+		t.Errorf("Error to Registry :%s.", stopErr.Error())
+	}
 	// Then
 	if strucComponentInstance.StopStatus == false {
 		t.Errorf("Bike doesn't call stop method StrucComponent")
@@ -177,14 +201,17 @@ func TestInstanceById_GivenComponentWithConstructorAndIdAndScopeSingleton_WhenRe
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
 		Scope:       Singleton,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
 	// When
-	bike.Registry(interfaceComponent)
+	registryErr := bike.Registry(interfaceComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// Then
-	instance, err := container.InstanceById(interfaceComponent.Id)
+	instance, err := container.InstanceByID(interfaceComponent.ID)
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
 	}
@@ -198,13 +225,16 @@ func TestInstanceById_GivenComponentWithConstructorAndIdAndScopePrototype_WhenIn
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(interfaceComponent)
+	registryErr := bike.Registry(interfaceComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// When
-	instance, err := container.InstanceById(interfaceComponent.Id)
+	instance, err := container.InstanceByID(interfaceComponent.ID)
 	// Then
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
@@ -219,13 +249,16 @@ func TestInstanceById_GivenComponentWithIdAndScopePrototype_WhenInstanceById_The
 	structComponent := Component{
 		Constructor: NewComponent,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(structComponent)
+	registryErr := bike.Registry(structComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// When
-	instance, err := container.InstanceById(structComponent.Id)
+	instance, err := container.InstanceByID(structComponent.ID)
 	// Then
 	if err != nil {
 		t.Errorf("Error to get instance by id:%s.", err.Error())
@@ -235,38 +268,34 @@ func TestInstanceById_GivenComponentWithIdAndScopePrototype_WhenInstanceById_The
 	}
 }
 
-func TestInstanceById_GivenComponentWithInvalidConstructor_WhenInstanceById_ThenReturnError(t *testing.T) {
+func TestInstanceById_GivenComponentWithInvalidConstructor_WhenRegistry_ThenReturnError(t *testing.T) {
 	// Given
 	structComponent := Component{
 		Constructor: InvalidConstructor,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(structComponent)
-	container, _ := bike.Start()
 	// When
-	_, err := container.InstanceById(structComponent.Id)
+	registryErr := bike.Registry(structComponent)
 	// Then
-	if err == nil {
-		t.Errorf("InstanceById must return an error ")
+	if registryErr == nil {
+		t.Errorf("Registry must return an error")
 	}
 }
 
-func TestInstanceById_GivenComponentWithInvalidScope_WhenInstanceById_ThenReturnError(t *testing.T) {
+func TestInstanceById_GivenComponentWithInvalidScope_WhenRegistry_ThenReturnError(t *testing.T) {
 	// Given
 	structComponent := Component{
 		Constructor: InvalidConstructor,
 		Scope:       99,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(structComponent)
-	container, _ := bike.Start()
 	// When
-	_, err := container.InstanceById(structComponent.Id)
+	registryErr := bike.Registry(structComponent)
 	// Then
-	if err == nil {
+	if registryErr == nil {
 		t.Errorf("InstanceById must return an error ")
 	}
 }
@@ -276,7 +305,7 @@ func TestInstanceById_GivenComponentWithInvalidId_WhenInstanceById_ThenReturnErr
 	bike := NewBike()
 	container, _ := bike.Start()
 	// When
-	_, err := container.InstanceById("any-id")
+	_, err := container.InstanceByID("any-id")
 	// Then
 	if err == nil {
 		t.Errorf("InstanceById must return an error ")
@@ -288,10 +317,13 @@ func TestInstancebyType_GivenComponentImplementInterface_WhenInstanceByType_Then
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(interfaceComponent)
+	registryErr := bike.Registry(interfaceComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	// When
 	instance, err := container.InstanceByType((*InterfaceComponent)(nil))
@@ -309,10 +341,13 @@ func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenIn
 	interfaceComponent := Component{
 		Constructor: func(strucComponent *StrucComponent) *string { return nil },
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(interfaceComponent)
+	registryErr := bike.Registry(interfaceComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	_, err := container.InstanceByType((*string)(nil))
 	// Then
@@ -324,12 +359,15 @@ func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenIn
 func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceThenReturError(t *testing.T) {
 	// Given
 	interfaceComponent := Component{
-		Constructor: NewValueComponent,
+		Constructor: NewInterfaceComponent,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
-	bike.Registry(interfaceComponent)
+	registryErr := bike.Registry(interfaceComponent)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
 	container, _ := bike.Start()
 	_, err := container.InstanceByType((*NoImplemented)(nil))
 	// Then
@@ -357,7 +395,7 @@ func TestRegistry_GivenComponentWithInvalidScopeWhenRegistryThenReturnError(t *t
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
 		Scope:       99,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	bike := NewBike()
 	err := bike.Registry(interfaceComponent)
@@ -388,12 +426,20 @@ func TestInstanceByType_ComponentWithADependencyGivenWhenInstanceByTypeThenRetur
 		Constructor: NewA,
 		Scope:       Singleton,
 	}
-	bike.Registry(componentA)
+	registryErr := bike.Registry(componentA)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
+
 	componentB := Component{
 		Constructor: NewB,
 		Scope:       Singleton,
 	}
-	bike.Registry(componentB)
+	registryErr = bike.Registry(componentB)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
+
 	container, _ := bike.Start()
 	// When
 	_, err := container.InstanceByType((*B)(nil))
@@ -472,14 +518,18 @@ func TestInstanceById_GivenComponentInvalidDependenciesWhenInstanceByIdThenRetur
 	component := Component{
 		Constructor: NewB,
 		Scope:       Prototype,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	// When
 	bike := NewBike()
-	bike.Registry(component)
+	registryErr := bike.Registry(component)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
+
 	container, _ := bike.Start()
 	// Then
-	_, err := container.InstanceById(component.Id)
+	_, err := container.InstanceByID(component.ID)
 	if err == nil {
 		t.Errorf("InstanceById must return an error")
 	}
@@ -490,11 +540,15 @@ func TestInstanceById_GivenComponentInvalidDependenciesWhenStartIdThenReturnErro
 	component := Component{
 		Constructor: NewB,
 		Scope:       Singleton,
-		Id:          "IdComponent",
+		ID:          "IdComponent",
 	}
 	// When
 	bike := NewBike()
-	bike.Registry(component)
+	registryErr := bike.Registry(component)
+	if registryErr != nil {
+		t.Errorf("Error to Registry :%s.", registryErr.Error())
+	}
+
 	_, err := bike.Start()
 	if err == nil {
 		t.Errorf("InstanceById must return an error")
@@ -503,7 +557,7 @@ func TestInstanceById_GivenComponentInvalidDependenciesWhenStartIdThenReturnErro
 
 func TestBikeError_GivenBikeErrorWhenErrorThenReturnErrorMessage(t *testing.T) {
 	// Given
-	bikeError := BikeError{
+	bikeError := Error{
 		messageError: "message",
 		errorCode:    ComponentConstructorNull,
 	}
@@ -517,7 +571,7 @@ func TestBikeError_GivenBikeErrorWhenErrorThenReturnErrorMessage(t *testing.T) {
 
 func TestBikeError_GivenBikeErrorWhenErrorCodeThenReturnErrorCode(t *testing.T) {
 	// Given
-	bikeError := BikeError{
+	bikeError := Error{
 		messageError: "message",
 		errorCode:    ComponentConstructorNull,
 	}
