@@ -2,10 +2,15 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "init" ]
+    tags:
+      - v*
+    branches: 
+      - master
+      - init
   pull_request:
-    branches: [ "init" ]
-
+    branches: 
+      - master
+      - init
 jobs:
 
   build:
