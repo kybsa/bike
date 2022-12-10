@@ -96,7 +96,41 @@ func NewBike() *Bike {
 
 // Registry add component to bike
 func (_self *Bike) Registry(component Component) *Error {
+	err := validateComponent(&component)
+	if err != nil {
+		return err
+	}
 
+	// Registry by id
+	if len([]rune(component.ID)) > 0 {
+		_self.componentsByID[component.ID] = &component
+	}
+
+	constructorType := reflect.TypeOf(component.Constructor)
+	typeComponent := constructorType.Out(0)
+	_self.componentsByType[typeComponent] = &component
+
+	// Registry by interfaces
+	for _, inter := range component.Interfaces {
+		interfaceType := reflect.TypeOf(inter).Elem()
+		_self.componentsByType[interfaceType] = &component
+	}
+
+	// Init array of prototype instances
+	if component.Scope == Prototype {
+		component.prototypeInstancesValue = make([]*reflect.Value, 0)
+	} else if component.Scope != Singleton {
+		message := "Invalid Scope: " + component.Scope.String()
+		return &Error{messageError: message, errorCode: InvalidScope}
+	}
+
+	// Add to array
+	_self.components = append(_self.components, &component)
+
+	return nil
+}
+
+func validateComponent(component *Component) *Error {
 	// Check if component have not constructor method
 	if component.Constructor == nil {
 		return &Error{messageError: "Constructor must no be nill", errorCode: ComponentConstructorNull}
@@ -137,30 +171,6 @@ func (_self *Bike) Registry(component Component) *Error {
 			return &Error{messageError: "Invalid number arguments of Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
 		}
 	}
-
-	// Registry by id
-	if len([]rune(component.ID)) > 0 {
-		_self.componentsByID[component.ID] = &component
-	}
-
-	_self.componentsByType[typeComponent] = &component
-
-	// Registry by interfaces
-	for _, inter := range component.Interfaces {
-		interfaceType := reflect.TypeOf(inter).Elem()
-		_self.componentsByType[interfaceType] = &component
-	}
-
-	// Init array of prototype instances
-	if component.Scope == Prototype {
-		component.prototypeInstancesValue = make([]*reflect.Value, 0)
-	} else if component.Scope != Singleton {
-		message := "Invalid Scope: " + component.Scope.String()
-		return &Error{messageError: message, errorCode: InvalidScope}
-	}
-
-	// Add to array
-	_self.components = append(_self.components, &component)
 
 	return nil
 }
