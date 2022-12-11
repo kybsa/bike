@@ -55,6 +55,10 @@ const (
 	ConstructorReturnNoPointerValue ErrorCode = 7
 	// ComponentConstructorNull error when Contructor property is null
 	ComponentConstructorNull ErrorCode = 8
+	// ConstrutorReturnNotNilError return not nil error
+	ConstrutorReturnNotNilError ErrorCode = 9
+	// ConstructorLastReturnValueIsNotError error when last return isnt type error
+	ConstructorLastReturnValueIsNotError ErrorCode = 10
 )
 
 // Error structo with error info
@@ -127,6 +131,7 @@ func validateComponent(component *Component) *Error {
 		return &Error{messageError: "Constructor must no be nill", errorCode: ComponentConstructorNull}
 	}
 
+	// Check Scope
 	if component.Scope != Singleton && component.Scope != Prototype {
 		message := "Invalid Scope: " + component.Scope.String()
 		return &Error{messageError: message, errorCode: InvalidScope}
@@ -134,7 +139,13 @@ func validateComponent(component *Component) *Error {
 
 	// Check Constructor component
 	constructorType := reflect.TypeOf(component.Constructor)
-	if constructorType.NumOut() != 1 {
+	if constructorType.NumOut() == 2 {
+		typeErrorReturn := constructorType.Out(1)
+		errorType := reflect.TypeOf((*error)(nil)).Elem()
+		if !typeErrorReturn.Implements(errorType) {
+			return &Error{messageError: "Last return value must be error type", errorCode: ConstructorLastReturnValueIsNotError}
+		}
+	} else if constructorType.NumOut() != 1 {
 		return &Error{messageError: "Constructor must return one value", errorCode: InvalidNumberOfReturnValuesOnConstructor}
 	}
 	typeComponent := constructorType.Out(0)
@@ -255,6 +266,16 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 	}
 	// Create component with dependencies
 	instanceResult := constructorValue.Call(args)
+
+	if len(instanceResult) == 2 {
+		errorElem := instanceResult[1].Elem()
+		if !instanceResult[1].IsNil() && errorElem.Interface() != nil {
+			cosntructorError := errorElem.Interface().(error)
+			message := "Constructor return an error:" + cosntructorError.Error()
+			return nil, &Error{messageError: message, errorCode: ConstrutorReturnNotNilError}
+		}
+	}
+
 	component.instanceValue = &instanceResult[0]
 
 	// Call init methods

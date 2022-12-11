@@ -54,6 +54,18 @@ func NewValueComponent() StrucComponent {
 func InvalidConstructor() {
 }
 
+func NewComponentReturnError() (*StrucComponent, error) {
+	return &StrucComponent{}, &Error{messageError: "message"}
+}
+
+func NewComponentReturnNilError() (*StrucComponent, error) {
+	return &StrucComponent{}, nil
+}
+
+func NewComponentReturnNoError() (*StrucComponent, *StrucComponent) {
+	return &StrucComponent{}, nil
+}
+
 type A struct {
 }
 
@@ -549,4 +561,55 @@ func TestBikeError_GivenBikeErrorWhenErrorCodeThenReturnErrorCode(t *testing.T) 
 	if currentError != ComponentConstructorNull {
 		t.Errorf("ErrorCode must return expected value")
 	}
+}
+
+func TestStart_GivenComponentConstructorReturnError_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewComponentReturnError,
+		Scope:       Singleton,
+	}
+	bike := NewBike()
+	bike.Add(component)
+	// When
+	_, err := bike.Start()
+	// Then
+	if err == nil {
+		t.Errorf("Start must return an error")
+	}
+
+}
+
+func TestStart_GivenComponentConstructorNoReturn_WhenStart_ThenReturnNilError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewComponentReturnNilError,
+		Scope:       Singleton,
+	}
+	bike := NewBike()
+	bike.Add(component)
+	// When
+	_, err := bike.Start()
+	// Then
+	if err != nil {
+		t.Errorf("Start must return nil error")
+	}
+
+}
+
+func TestStart_GivenComponentConstructorReturnNoError_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	component := Component{
+		Constructor: NewComponentReturnNoError,
+		Scope:       Singleton,
+	}
+	bike := NewBike()
+	bike.Add(component)
+	// When
+	_, err := bike.Start()
+	// Then
+	if err == nil {
+		t.Errorf("Start must return an error")
+	}
+
 }
