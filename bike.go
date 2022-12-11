@@ -75,65 +75,61 @@ func (_self *Error) ErrorCode() ErrorCode {
 
 // Bike is main struct of this package
 type Bike struct {
+	components []*Component
+}
+
+// Container struct with component management
+type Container struct {
 	componentsByType map[reflect.Type]*Component
 	componentsByID   map[string]*Component
 	components       []*Component
 }
 
-// Container struct with component management
-type Container struct {
-	bike *Bike
-}
-
 // NewBike create a Bike instance
 func NewBike() *Bike {
 	return &Bike{
-		componentsByType: make(map[reflect.Type]*Component),
-		componentsByID:   make(map[string]*Component),
-		components:       make([]*Component, 0),
+		components: make([]*Component, 0),
 	}
 }
 
-// Registry add component to bike
-func (_self *Bike) Registry(component Component) *Error {
-	err := validateComponent(&component)
-	if err != nil {
-		return err
-	}
+// Add add a component to bike
+func (_self *Bike) Add(component Component) {
+	// Add to array
+	_self.components = append(_self.components, &component)
+}
 
+// Registry a component to Container
+func (_self *Container) registry(component *Component) {
 	// Registry by id
 	if len([]rune(component.ID)) > 0 {
-		_self.componentsByID[component.ID] = &component
+		_self.componentsByID[component.ID] = component
 	}
 
 	constructorType := reflect.TypeOf(component.Constructor)
 	typeComponent := constructorType.Out(0)
-	_self.componentsByType[typeComponent] = &component
+	_self.componentsByType[typeComponent] = component
 
 	// Registry by interfaces
 	for _, inter := range component.Interfaces {
 		interfaceType := reflect.TypeOf(inter).Elem()
-		_self.componentsByType[interfaceType] = &component
+		_self.componentsByType[interfaceType] = component
 	}
 
 	// Init array of prototype instances
 	if component.Scope == Prototype {
 		component.prototypeInstancesValue = make([]*reflect.Value, 0)
-	} else if component.Scope != Singleton {
-		message := "Invalid Scope: " + component.Scope.String()
-		return &Error{messageError: message, errorCode: InvalidScope}
 	}
-
-	// Add to array
-	_self.components = append(_self.components, &component)
-
-	return nil
 }
 
 func validateComponent(component *Component) *Error {
 	// Check if component have not constructor method
 	if component.Constructor == nil {
 		return &Error{messageError: "Constructor must no be nill", errorCode: ComponentConstructorNull}
+	}
+
+	if component.Scope != Singleton && component.Scope != Prototype {
+		message := "Invalid Scope: " + component.Scope.String()
+		return &Error{messageError: message, errorCode: InvalidScope}
 	}
 
 	// Check Constructor component
@@ -175,7 +171,7 @@ func validateComponent(component *Component) *Error {
 	return nil
 }
 
-func (_self *Bike) instanceByTypeAny(inputType any) (interface{}, *Error) {
+func (_self *Container) instanceByTypeAny(inputType any) (interface{}, *Error) {
 	_type := reflect.TypeOf(inputType)
 	if _type.Kind() == reflect.Pointer && _type.Elem().Kind() == reflect.Interface {
 		_type = _type.Elem()
@@ -183,7 +179,7 @@ func (_self *Bike) instanceByTypeAny(inputType any) (interface{}, *Error) {
 	return _self.instanceByType(_type)
 }
 
-func (_self *Bike) instanceByID(id string) (interface{}, *Error) {
+func (_self *Container) instanceByID(id string) (interface{}, *Error) {
 	component, ok := _self.componentsByID[id]
 	if ok {
 		if component.Scope == Singleton {
@@ -210,7 +206,7 @@ func (_self *Bike) instanceByID(id string) (interface{}, *Error) {
 	return nil, &Error{messageError: message, errorCode: DependecyByIDNotFound}
 }
 
-func (_self *Bike) instanceByType(_type reflect.Type) (interface{}, *Error) {
+func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error) {
 	component, ok := _self.componentsByType[_type]
 	if ok {
 		if component.Scope == Singleton {
@@ -240,7 +236,7 @@ func (_self *Bike) instanceByType(_type reflect.Type) (interface{}, *Error) {
 	return nil, &Error{messageError: message, errorCode: DependecyByTypeNotFound}
 }
 
-func (_self *Bike) createComponent(component *Component) (*reflect.Value, *Error) {
+func (_self *Container) createComponent(component *Component) (*reflect.Value, *Error) {
 	// Create component by contructor method
 	constructorValue := reflect.ValueOf(component.Constructor)
 	constructorType := reflect.TypeOf(component.Constructor)
@@ -274,21 +270,36 @@ func (_self *Bike) createComponent(component *Component) (*reflect.Value, *Error
 
 // Start start bike
 func (_self *Bike) Start() (*Container, *Error) {
-	for _, component := range _self.components {
-		// Create components
+	container := &Container{
+		componentsByType: make(map[reflect.Type]*Component),
+		componentsByID:   make(map[string]*Component),
+		components:       _self.components,
+	}
+
+	for _, component := range container.components {
+		// 1. Validate
+		validateErr := validateComponent(component)
+		if validateErr != nil {
+			return nil, validateErr
+		}
+
+		// 2. Registry
+		container.registry(component)
+
+		// 3. Create components
 		if component.Scope == Singleton {
-			instanceValue, err := _self.createComponent(component)
+			instanceValue, err := container.createComponent(component)
 			if err != nil {
 				return nil, err
 			}
 			component.instanceValue = instanceValue
 		}
 	}
-	return &Container{bike: _self}, nil
+	return container, nil
 }
 
-// Stop stop bike
-func (_self *Bike) Stop() *Error {
+// Stop stop container
+func (_self *Container) Stop() *Error {
 	var lastError *Error
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
@@ -308,10 +319,10 @@ func (_self *Bike) Stop() *Error {
 
 // InstanceByType return a instance by type
 func (_self *Container) InstanceByType(inputType any) (interface{}, *Error) {
-	return _self.bike.instanceByTypeAny(inputType)
+	return _self.instanceByTypeAny(inputType)
 }
 
 // InstanceByID return a instance by ID
 func (_self *Container) InstanceByID(id string) (interface{}, *Error) {
-	return _self.bike.instanceByID(id)
+	return _self.instanceByID(id)
 }
