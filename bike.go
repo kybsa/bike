@@ -2,6 +2,7 @@ package bike
 
 import (
 	"reflect"
+	"runtime"
 )
 
 // Scope Component supported
@@ -242,7 +243,7 @@ func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error)
 		message = "Component by type:" + _type.Name() + " not found"
 
 	} else {
-		message = "Component by type:" + _type.Elem().Name() + " not found"
+		message = "Component by type:" + getTypeName(_type) + " not found"
 	}
 	return nil, &Error{messageError: message, errorCode: DependecyByTypeNotFound}
 }
@@ -260,7 +261,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		if err == nil {
 			args[i] = reflect.ValueOf(inputArg)
 		} else {
-			message := "Error to get dependecy: [" + inputType.Name() + "] required by function:[" + constructorType.Name() + "]\n" + err.Error()
+			message := "Error to get dependecy: [" + getTypeName(inputType) + "] required by Constructor:[" + getFuncName(component) + "]\n" + err.Error()
 			return nil, &Error{messageError: message, errorCode: err.ErrorCode()}
 		}
 	}
@@ -346,4 +347,16 @@ func (_self *Container) InstanceByType(inputType any) (interface{}, *Error) {
 // InstanceByID return a instance by ID
 func (_self *Container) InstanceByID(id string) (interface{}, *Error) {
 	return _self.instanceByID(id)
+}
+
+func getTypeName(_type reflect.Type) string {
+	if _type.Kind() == reflect.Pointer {
+		return "*" + _type.Elem().Name()
+	} else {
+		return _type.Name()
+	}
+}
+
+func getFuncName(component *Component) string {
+	return runtime.FuncForPC(reflect.ValueOf(component.Constructor).Pointer()).Name()
 }

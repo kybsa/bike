@@ -1,6 +1,7 @@
 package bike
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -611,5 +612,36 @@ func TestStart_GivenComponentConstructorReturnNoError_WhenStart_ThenReturnError(
 	if err == nil {
 		t.Errorf("Start must return an error")
 	}
+}
 
+func Test_GivenInterfaceType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
+	// Given
+	type Do interface {
+	}
+	anyDo := (*Do)(nil)
+	interfaceType := reflect.TypeOf(anyDo).Elem()
+
+	// When
+	actual := getTypeName(interfaceType)
+
+	// Then
+	if actual != "Do" {
+		t.Errorf("Start must return an error")
+	}
+}
+
+func Test_GivenStrucPointerType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
+	// Given
+	type Str struct {
+	}
+	anyDo := (*Str)(nil)
+	interfaceType := reflect.TypeOf(anyDo)
+
+	// When
+	actual := getTypeName(interfaceType)
+
+	// Then
+	if actual != "*Str" {
+		t.Errorf("Start must return an Str, current value:%s", actual)
+	}
 }
