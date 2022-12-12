@@ -128,7 +128,7 @@ func (_self *Container) registry(component *Component) {
 func validateComponent(component *Component) *Error {
 	// Check if component have not constructor method
 	if component.Constructor == nil {
-		return &Error{messageError: "Constructor must no be nill", errorCode: ComponentConstructorNull}
+		return &Error{messageError: "Constructor must no be nil", errorCode: ComponentConstructorNull}
 	}
 
 	// Check Scope
@@ -260,7 +260,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		if err == nil {
 			args[i] = reflect.ValueOf(inputArg)
 		} else {
-			message := "Error to get dependecy: [" + inputType.Name() + "] required by function" + constructorType.Name() + "]\n" + err.Error()
+			message := "Error to get dependecy: [" + inputType.Name() + "] required by function:[" + constructorType.Name() + "]\n" + err.Error()
 			return nil, &Error{messageError: message, errorCode: err.ErrorCode()}
 		}
 	}
