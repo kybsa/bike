@@ -32,6 +32,7 @@ type Component struct {
 	PostConstruct           string
 	Destroy                 string
 	Constructor             interface{}
+	PostStart               string
 	instanceValue           *reflect.Value
 	prototypeInstancesValue []*reflect.Value
 }
@@ -60,6 +61,8 @@ const (
 	ConstrutorReturnNotNilError ErrorCode = 9
 	// ConstructorLastReturnValueIsNotError error when last return isnt type error
 	ConstructorLastReturnValueIsNotError ErrorCode = 10
+	// PostStartWithScopeDifferentToSingleton error when a component has PostStart and Scope different to Singleton
+	PostStartWithScopeDifferentToSingleton ErrorCode = 11
 )
 
 // Error structo with error info
@@ -161,7 +164,7 @@ func validateComponent(component *Component) *Error {
 		componentType := constructorType.Out(0)
 		method, ok := componentType.MethodByName(component.PostConstruct)
 		if !ok {
-			return &Error{messageError: "Component.PostConstruct [" + component.PostConstruct + "] not found" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{messageError: "Component.PostConstruct [" + component.PostConstruct + "] not found", errorCode: InvalidNumArgOnPostConstruct}
 		}
 		if method.Type.NumIn() != 1 {
 			return &Error{messageError: "Invalid argument number of Component.PostConstruct. PostConstruct:" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
@@ -177,6 +180,23 @@ func validateComponent(component *Component) *Error {
 		}
 		if method.Type.NumIn() != 1 {
 			return &Error{messageError: "Invalid number arguments of Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
+		}
+	}
+
+	// Check PostStart
+	if len([]rune(component.PostStart)) > 0 {
+
+		if component.Scope != Singleton {
+			return &Error{messageError: "Component.PostStart [" + component.PostStart + "] must scope equal to Singleton", errorCode: PostStartWithScopeDifferentToSingleton}
+		}
+
+		componentType := constructorType.Out(0)
+		method, ok := componentType.MethodByName(component.PostStart)
+		if !ok {
+			return &Error{messageError: "Component.PostStart [" + component.PostStart + "] not found", errorCode: InvalidNumArgOnPostConstruct}
+		}
+		if method.Type.NumIn() != 1 {
+			return &Error{messageError: "Invalid argument number of Component.PostStart [" + component.PostStart + "]", errorCode: InvalidNumArgOnPostConstruct}
 		}
 	}
 
@@ -316,7 +336,20 @@ func (_self *Bike) Start() (*Container, *Error) {
 			}
 			component.instanceValue = instanceValue
 		}
+
 	}
+
+	for _, component := range container.components {
+		// TODO Solo debe ser soportado por Singleton
+		// 4. PostStart
+		if component.Scope == Singleton && len([]rune(component.PostStart)) > 0 {
+			constructorType := reflect.TypeOf(component.Constructor)
+			componentType := constructorType.Out(0)
+			method, _ := componentType.MethodByName(component.PostStart)
+			go method.Func.Call([]reflect.Value{*component.instanceValue})
+		}
+	}
+
 	return container, nil
 }
 

@@ -20,6 +20,7 @@ type InterfaceAnyComponent interface {
 
 type StrucComponent struct {
 	InitStatus bool
+	PostStart  bool
 	StopStatus bool
 }
 
@@ -29,6 +30,13 @@ func (_self *StrucComponent) DoAnything() {
 
 func (_self *StrucComponent) Init() {
 	_self.InitStatus = true
+}
+
+func (_self *StrucComponent) PostInit() {
+	_self.PostStart = true
+}
+
+func (_self *StrucComponent) InvalidPostInit(param string) {
 }
 
 func (_self *StrucComponent) InvalidInit(param string) {
@@ -46,7 +54,11 @@ func NewInterfaceComponent() InterfaceComponent {
 }
 
 func NewComponent() *StrucComponent {
-	return &StrucComponent{}
+	return &StrucComponent{
+		InitStatus: false,
+		PostStart:  false,
+		StopStatus: false,
+	}
 }
 
 func NewValueComponent() StrucComponent {
@@ -646,5 +658,71 @@ func Test_GivenStrucPointerType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
 	// Then
 	if actual != "*Str" {
 		t.Errorf("Start must return an Str, current value:%s", actual)
+	}
+}
+
+func TestStart_GivenComponentWithPostStart_WhenStart_ThenCallPostInitMethod(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		PostStart:   "PostInit",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	container, _ := bike.Start()
+	instance, _ := container.InstanceByType((*StrucComponent)(nil))
+	strucComponentInstance := (instance).(*StrucComponent)
+	// Then
+	time.Sleep(200 * time.Millisecond)
+	if strucComponentInstance.PostStart == false {
+		t.Errorf("Bike doesn't call init method StrucComponent")
+	}
+}
+
+func TestStart_GivenComponentWithInvalidNamePostStart_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		PostStart:   "InvalidNameMethod",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	_, startError := bike.Start()
+	if startError == nil {
+		t.Errorf("Start must return an error")
+	}
+}
+
+func TestStart_GivenComponentWithInvalidPostStart_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		PostStart:   "InvalidPostInit",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	_, startError := bike.Start()
+	if startError == nil {
+		t.Errorf("Start must return an error")
+	}
+}
+
+func TestStart_GivenComponentWithPostStartAndScopePrototype_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Prototype,
+		PostStart:   "PostInit",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	_, startError := bike.Start()
+	if startError == nil {
+		t.Errorf("Start must return an error")
 	}
 }
