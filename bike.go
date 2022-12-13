@@ -3,6 +3,7 @@ package bike
 import (
 	"reflect"
 	"runtime"
+	"sync"
 )
 
 // Scope Component supported
@@ -339,16 +340,21 @@ func (_self *Bike) Start() (*Container, *Error) {
 
 	}
 
+	// 4. PostStart
+	var wg sync.WaitGroup
 	for _, component := range container.components {
-		// TODO Solo debe ser soportado por Singleton
-		// 4. PostStart
 		if component.Scope == Singleton && len([]rune(component.PostStart)) > 0 {
 			constructorType := reflect.TypeOf(component.Constructor)
 			componentType := constructorType.Out(0)
 			method, _ := componentType.MethodByName(component.PostStart)
-			go method.Func.Call([]reflect.Value{*component.instanceValue})
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				method.Func.Call([]reflect.Value{*component.instanceValue})
+			}()
 		}
 	}
+	wg.Wait()
 
 	return container, nil
 }
