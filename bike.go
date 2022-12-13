@@ -284,7 +284,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 	componentType := constructorType.Out(0)
 	if len([]rune(component.PostConstruct)) > 0 {
 		method, _ := componentType.MethodByName(component.PostConstruct)
-		method.Func.Call([]reflect.Value{*component.instanceValue})
+		go method.Func.Call([]reflect.Value{*component.instanceValue})
 	}
 
 	return component.instanceValue, nil
@@ -331,7 +331,7 @@ func (_self *Container) Stop() *Error {
 				method.Func.Call([]reflect.Value{*component.instanceValue})
 			} else if component.Scope == Prototype {
 				for _, prototypeInstance := range component.prototypeInstancesValue {
-					method.Func.Call([]reflect.Value{*prototypeInstance})
+					go method.Func.Call([]reflect.Value{*prototypeInstance})
 				}
 			}
 		}

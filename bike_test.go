@@ -3,6 +3,7 @@ package bike
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 type NoImplemented interface {
@@ -141,6 +142,7 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 	}
 
 	// Then
+	time.Sleep(100 * time.Millisecond)
 	if strucComponentInstance.InitStatus == false {
 		t.Errorf("Bike doesn't call init method StrucComponent")
 	}
@@ -165,6 +167,7 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 		t.Errorf("Error to Stop :%s.", stopErr.Error())
 	}
 	// Then
+	time.Sleep(100 * time.Millisecond)
 	if strucComponentInstance.StopStatus == false {
 		t.Errorf("Bike doesn't call stop method StrucComponent")
 	}
