@@ -8,9 +8,9 @@ func TestGet_GivenConfig_WhenGet_ThenReturnExpectedValue(t *testing.T) {
 		MapConfig: map[string]string{"key": "value"},
 	}
 	// When
-	actual := simpleConfig.Get("key")
+	actual, ok := simpleConfig.Get("key")
 	// Then
-	if actual != "value" {
+	if actual != "value" || !ok {
 		t.Error("Get must return value")
 	}
 }

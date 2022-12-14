@@ -1,5 +1,5 @@
 package config
 
 type ConfigComponent interface {
-	Get(key string) string
+	Get(key string) (string, bool)
 }
