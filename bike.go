@@ -348,10 +348,10 @@ func (_self *Bike) Start() (*Container, *Error) {
 			componentType := constructorType.Out(0)
 			method, _ := componentType.MethodByName(component.PostStart)
 			wg.Add(1)
-			go func() {
+			go func(internalComponent *Component) {
 				defer wg.Done()
-				method.Func.Call([]reflect.Value{*component.instanceValue})
-			}()
+				method.Func.Call([]reflect.Value{*internalComponent.instanceValue})
+			}(component)
 		}
 	}
 	wg.Wait()
