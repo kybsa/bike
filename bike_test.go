@@ -32,6 +32,10 @@ func (_self *StrucComponent) Init() {
 	_self.InitStatus = true
 }
 
+func (_self *StrucComponent) InitReturnError() error {
+	return &Error{}
+}
+
 func (_self *StrucComponent) PostInit() {
 	_self.PostStart = true
 }
@@ -723,6 +727,23 @@ func TestStart_GivenComponentWithPostStartAndScopePrototype_WhenStart_ThenReturn
 	// When
 	_, startError := bike.Start()
 	if startError == nil {
+		t.Errorf("Start must return an error")
+	}
+}
+
+func TestStart_GivenComponentWithInitReturnError_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor:   NewComponent,
+		Scope:         Singleton,
+		PostConstruct: "InitReturnError",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	_, startErr := bike.Start()
+	// Then
+	if startErr == nil {
 		t.Errorf("Start must return an error")
 	}
 }

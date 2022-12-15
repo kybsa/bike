@@ -64,6 +64,8 @@ const (
 	ConstructorLastReturnValueIsNotError ErrorCode = 10
 	// PostStartWithScopeDifferentToSingleton error when a component has PostStart and Scope different to Singleton
 	PostStartWithScopeDifferentToSingleton ErrorCode = 11
+	// PostContructReturnError error when a PostContruct return a error
+	PostContructReturnError = 12
 )
 
 // Error structo with error info
@@ -300,12 +302,19 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 
 	component.instanceValue = &instanceResult[0]
 
-	// Call init methods
-	// Search Components methods to pointer struct
+	// Call PostConstruct
 	componentType := constructorType.Out(0)
 	if len([]rune(component.PostConstruct)) > 0 {
 		method, _ := componentType.MethodByName(component.PostConstruct)
-		go method.Func.Call([]reflect.Value{*component.instanceValue})
+		typeError := reflect.TypeOf((*error)(nil)).Elem()
+		returnValues := method.Func.Call([]reflect.Value{*component.instanceValue})
+		for _, value := range returnValues {
+			if value.Type().Implements(typeError) {
+				err := value.Elem().Interface().(error)
+				message := "PostConstruct return an error:" + err.Error()
+				return nil, &Error{messageError: message, errorCode: PostContructReturnError}
+			}
+		}
 	}
 
 	return component.instanceValue, nil
@@ -329,7 +338,7 @@ func (_self *Bike) Start() (*Container, *Error) {
 		// 2. Registry
 		container.registry(component)
 
-		// 3. Create components
+		// 3. Create component
 		if component.Scope == Singleton {
 			instanceValue, err := container.createComponent(component)
 			if err != nil {
@@ -337,7 +346,6 @@ func (_self *Bike) Start() (*Container, *Error) {
 			}
 			component.instanceValue = instanceValue
 		}
-
 	}
 
 	// 4. PostStart

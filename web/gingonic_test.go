@@ -24,7 +24,10 @@ func TestStart_GivenGinGonicComponent_WhenStart_ThenCallRun(t *testing.T) {
 
 	ginGonicComponent := NewGinGonicComponent(engineStruct, &configComponent)
 	// When
-	ginGonicComponent.Start()
+	err := ginGonicComponent.Start()
+	if err != nil {
+		t.Error("Start must no return an error")
+	}
 
 	// Then
 	if !engineStruct.callRun {
