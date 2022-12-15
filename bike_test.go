@@ -782,7 +782,10 @@ func TestStart_GivenComponentPrototypeStopReturnError_WhenStop_ThenReturnError(t
 	bike.Add(structComponent)
 	// When
 	container, _ := bike.Start()
-	container.InstanceByID("1")
+	_, err := container.InstanceByID("1")
+	if err != nil {
+		t.Errorf("InstanceByID must return no error")
+	}
 	stopErr := container.Stop()
 	// Then
 	if stopErr == nil {
