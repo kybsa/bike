@@ -50,6 +50,10 @@ func (_self *StrucComponent) Stop() {
 	_self.StopStatus = true
 }
 
+func (_self *StrucComponent) StopError() error {
+	return &Error{}
+}
+
 func (_self *StrucComponent) DoAny() {
 }
 
@@ -745,5 +749,43 @@ func TestStart_GivenComponentWithInitReturnError_WhenStart_ThenReturnError(t *te
 	// Then
 	if startErr == nil {
 		t.Errorf("Start must return an error")
+	}
+}
+
+func TestStart_GivenComponentSingletonStopReturnError_WhenStop_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor: NewComponent,
+		Scope:       Singleton,
+		Destroy:     "StopError",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	container, _ := bike.Start()
+	stopErr := container.Stop()
+	// Then
+	if stopErr == nil {
+		t.Errorf("Stop must return an error")
+	}
+}
+
+func TestStart_GivenComponentPrototypeStopReturnError_WhenStop_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		ID:          "1",
+		Constructor: NewComponent,
+		Scope:       Prototype,
+		Destroy:     "StopError",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	container, _ := bike.Start()
+	container.InstanceByID("1")
+	stopErr := container.Stop()
+	// Then
+	if stopErr == nil {
+		t.Errorf("Stop must return an error")
 	}
 }

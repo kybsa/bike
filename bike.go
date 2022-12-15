@@ -370,15 +370,30 @@ func (_self *Bike) Start() (*Container, *Error) {
 // Stop stop container
 func (_self *Container) Stop() *Error {
 	var lastError *Error
+	typeError := reflect.TypeOf((*error)(nil)).Elem()
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
 			componentType := reflect.TypeOf(component.Constructor).Out(0)
 			method, _ := componentType.MethodByName(component.Destroy)
 			if component.Scope == Singleton {
-				method.Func.Call([]reflect.Value{*component.instanceValue})
+				returnValues := method.Func.Call([]reflect.Value{*component.instanceValue})
+				for _, value := range returnValues {
+					if value.Type().Implements(typeError) {
+						err := value.Elem().Interface().(error)
+						message := "Destroy return an error:" + err.Error()
+						return &Error{messageError: message, errorCode: PostContructReturnError}
+					}
+				}
 			} else if component.Scope == Prototype {
 				for _, prototypeInstance := range component.prototypeInstancesValue {
-					go method.Func.Call([]reflect.Value{*prototypeInstance})
+					returnValues := method.Func.Call([]reflect.Value{*prototypeInstance})
+					for _, value := range returnValues {
+						if value.Type().Implements(typeError) {
+							err := value.Elem().Interface().(error)
+							message := "Destroy return an error:" + err.Error()
+							return &Error{messageError: message, errorCode: PostContructReturnError}
+						}
+					}
 				}
 			}
 		}
