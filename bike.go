@@ -1,9 +1,12 @@
 package bike
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // Scope Component supported
@@ -112,9 +115,10 @@ func (_self *Bike) Add(component Component) {
 // Registry a component to Container
 func (_self *Container) registry(component *Component) {
 	// Registry by id
-	if len([]rune(component.ID)) > 0 {
-		_self.componentsByID[component.ID] = component
+	if len([]rune(component.ID)) == 0 {
+		component.ID = uuid.NewString()
 	}
+	_self.componentsByID[component.ID] = component
 
 	constructorType := reflect.TypeOf(component.Constructor)
 	typeComponent := constructorType.Out(0)
@@ -135,13 +139,16 @@ func (_self *Container) registry(component *Component) {
 func validateComponent(component *Component) *Error {
 	// Check if component have not constructor method
 	if component.Constructor == nil {
-		return &Error{messageError: "Constructor must no be nil", errorCode: ComponentConstructorNull}
+		return &Error{
+			messageError: fmt.Sprintf("Error on Component ID:[%s]. Constructor must not be nil", component.ID),
+			errorCode:    ComponentConstructorNull}
 	}
 
 	// Check Scope
 	if component.Scope != Singleton && component.Scope != Prototype {
-		message := "Invalid Scope: " + component.Scope.String()
-		return &Error{messageError: message, errorCode: InvalidScope}
+		return &Error{
+			messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid Scope: %s", component.ID, component.Scope.String()),
+			errorCode:    InvalidScope}
 	}
 
 	// Check Constructor component
@@ -150,16 +157,22 @@ func validateComponent(component *Component) *Error {
 		typeErrorReturn := constructorType.Out(1)
 		errorType := reflect.TypeOf((*error)(nil)).Elem()
 		if !typeErrorReturn.Implements(errorType) {
-			return &Error{messageError: "Last return value must be error type", errorCode: ConstructorLastReturnValueIsNotError}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Last return value must be of error type", component.ID),
+				errorCode:    ConstructorLastReturnValueIsNotError}
 		}
 	} else if constructorType.NumOut() != 1 {
-		return &Error{messageError: "Constructor must return one value", errorCode: InvalidNumberOfReturnValuesOnConstructor}
+		return &Error{
+			messageError: fmt.Sprintf("Error on Component ID:[%s]. Constructor must return one value", component.ID),
+			errorCode:    InvalidNumberOfReturnValuesOnConstructor}
 	}
 	typeComponent := constructorType.Out(0)
 
 	// Check return Constructor value
 	if typeComponent.Kind() != reflect.Pointer && typeComponent.Kind() != reflect.Interface {
-		return &Error{messageError: "Constructor must return a pointer o interface value", errorCode: ConstructorReturnNoPointerValue}
+		return &Error{
+			messageError: fmt.Sprintf("Error on Component ID:[%s]. Constructor must return a pointer o interface value", component.ID),
+			errorCode:    ConstructorReturnNoPointerValue}
 	}
 
 	// Check PostConstruct
@@ -167,10 +180,14 @@ func validateComponent(component *Component) *Error {
 		componentType := constructorType.Out(0)
 		method, ok := componentType.MethodByName(component.PostConstruct)
 		if !ok {
-			return &Error{messageError: "Component.PostConstruct [" + component.PostConstruct + "] not found", errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. PostConstruct [%s] not found", component.ID, component.PostConstruct),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 		if method.Type.NumIn() != 1 {
-			return &Error{messageError: "Invalid argument number of Component.PostConstruct. PostConstruct:" + component.PostConstruct, errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid argument number of PostConstruct:[%s]", component.ID, component.PostConstruct),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 	}
 
@@ -179,10 +196,14 @@ func validateComponent(component *Component) *Error {
 		componentType := constructorType.Out(0)
 		method, ok := componentType.MethodByName(component.Destroy)
 		if !ok {
-			return &Error{messageError: "Invalid Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid Component.Destroy:%s", component.ID, component.Destroy),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 		if method.Type.NumIn() != 1 {
-			return &Error{messageError: "Invalid number arguments of Component.Destroy:" + component.Destroy, errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid number arguments of Destroy:[%s]", component.ID, component.Destroy),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 	}
 
@@ -190,16 +211,22 @@ func validateComponent(component *Component) *Error {
 	if len([]rune(component.PostStart)) > 0 {
 
 		if component.Scope != Singleton {
-			return &Error{messageError: "Component.PostStart [" + component.PostStart + "] must scope equal to Singleton", errorCode: PostStartWithScopeDifferentToSingleton}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. PostStart [%s] only supported when scope equal to Singleton", component.ID, component.PostStart),
+				errorCode:    PostStartWithScopeDifferentToSingleton}
 		}
 
 		componentType := constructorType.Out(0)
 		method, ok := componentType.MethodByName(component.PostStart)
 		if !ok {
-			return &Error{messageError: "Component.PostStart [" + component.PostStart + "] not found", errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. PostStart [%s] not found", component.ID, component.PostStart),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 		if method.Type.NumIn() != 1 {
-			return &Error{messageError: "Invalid argument number of Component.PostStart [" + component.PostStart + "]", errorCode: InvalidNumArgOnPostConstruct}
+			return &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid argument number of PostStart [%s]", component.ID, component.PostStart),
+				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 	}
 
@@ -284,8 +311,9 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		if err == nil {
 			args[i] = reflect.ValueOf(inputArg)
 		} else {
-			message := "Error to get dependecy: [" + getTypeName(inputType) + "] required by Constructor:[" + getFuncName(component) + "]\n" + err.Error()
-			return nil, &Error{messageError: message, errorCode: err.ErrorCode()}
+			return nil, &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Error to get dependecy: [%s] required by Constructor:[%s]", component.ID, getTypeName(inputType), getFuncName(component)),
+				errorCode:    err.ErrorCode()}
 		}
 	}
 	// Create component with dependencies
@@ -294,9 +322,10 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 	if len(instanceResult) == 2 {
 		errorElem := instanceResult[1].Elem()
 		if !instanceResult[1].IsNil() && errorElem.Interface() != nil {
-			cosntructorError := errorElem.Interface().(error)
-			message := "Constructor return an error:" + cosntructorError.Error()
-			return nil, &Error{messageError: message, errorCode: ConstrutorReturnNotNilError}
+			constructorError := errorElem.Interface().(error)
+			return nil, &Error{
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Constructor return an error:[%s]", component.ID, constructorError.Error()),
+				errorCode:    ConstrutorReturnNotNilError}
 		}
 	}
 
@@ -311,8 +340,9 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		for _, value := range returnValues {
 			if value.Type().Implements(typeError) {
 				err := value.Elem().Interface().(error)
-				message := "PostConstruct return an error:" + err.Error()
-				return nil, &Error{messageError: message, errorCode: PostContructReturnError}
+				return nil, &Error{
+					messageError: fmt.Sprintf("Error on Component ID:[%s]. PostConstruct return an error:[%s]", component.ID, err.Error()),
+					errorCode:    PostContructReturnError}
 			}
 		}
 	}
@@ -369,7 +399,6 @@ func (_self *Bike) Start() (*Container, *Error) {
 
 // Stop stop container
 func (_self *Container) Stop() *Error {
-	var lastError *Error
 	typeError := reflect.TypeOf((*error)(nil)).Elem()
 	for _, component := range _self.components {
 		if len([]rune(component.Destroy)) > 0 {
@@ -380,8 +409,9 @@ func (_self *Container) Stop() *Error {
 				for _, value := range returnValues {
 					if value.Type().Implements(typeError) {
 						err := value.Elem().Interface().(error)
-						message := "Destroy return an error:" + err.Error()
-						return &Error{messageError: message, errorCode: PostContructReturnError}
+						return &Error{
+							messageError: fmt.Sprintf("Error on Component ID:[%s]. Destroy return an error:[%s]", component.ID, err.Error()),
+							errorCode:    PostContructReturnError}
 					}
 				}
 			} else if component.Scope == Prototype {
@@ -390,15 +420,16 @@ func (_self *Container) Stop() *Error {
 					for _, value := range returnValues {
 						if value.Type().Implements(typeError) {
 							err := value.Elem().Interface().(error)
-							message := "Destroy return an error:" + err.Error()
-							return &Error{messageError: message, errorCode: PostContructReturnError}
+							return &Error{
+								messageError: fmt.Sprintf("Error on Component ID:[%s]. Destroy return an error:[%s]", component.ID, err.Error()),
+								errorCode:    PostContructReturnError}
 						}
 					}
 				}
 			}
 		}
 	}
-	return lastError
+	return nil
 }
 
 // InstanceByType return a instance by type
