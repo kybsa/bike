@@ -1,3 +1,4 @@
+// Package config contains config features
 package config
 
 type ConfigComponent interface {

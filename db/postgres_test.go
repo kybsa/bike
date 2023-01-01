@@ -65,3 +65,46 @@ func Test_GivenOpenReturnError_WhenNewPostgresComponent_ThenReturnError(t *testi
 		t.Errorf("NewPostgresComponent must return an error.")
 	}
 }
+
+func Test_GivenOpenReturnDB_WhenNewPostgresComponentSession_ThenReturnNilError(t *testing.T) {
+	// Given
+	sqlOpen = func(dialector gorm.Dialector, opt ...gorm.Option) (*gorm.DB, error) {
+		return &gorm.DB{
+			Config: &gorm.Config{},
+		}, nil
+	}
+	simpleConfig := &config.SimpleConfig{
+		MapConfig: map[string]string{"PostgresComponent.Dsn": "ca"},
+	}
+
+	// When
+	postgres, err := NewPostgresComponentSession(simpleConfig, &gorm.Session{})
+	// Then
+	if postgres == nil {
+		t.Error("NewPostgresComponentSession must return component not null")
+	}
+
+	if err != nil {
+		t.Errorf("NewPostgresComponentSession must return nil error. Error:%s", err.Error())
+	}
+}
+
+func Test_GivenOpenReturnError_WhenNewPostgresComponentSession_ThenReturnError(t *testing.T) {
+	// Given
+	sqlOpen = func(dialector gorm.Dialector, opt ...gorm.Option) (*gorm.DB, error) {
+		return nil, errors.New("error")
+	}
+	simpleConfig := &config.SimpleConfig{
+		MapConfig: map[string]string{"PostgresComponent.Dsn": "ca"},
+	}
+	// When
+	postgres, err := NewPostgresComponentSession(simpleConfig, &gorm.Session{})
+	// Then
+	if postgres != nil {
+		t.Error("NewPostgresComponent must return component must be not null")
+	}
+
+	if err == nil {
+		t.Errorf("NewPostgresComponent must return an error.")
+	}
+}

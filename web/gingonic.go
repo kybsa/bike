@@ -1,3 +1,4 @@
+// Package web contains web features
 package web
 
 import (

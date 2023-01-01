@@ -1,3 +1,4 @@
+// Package bike contains core features
 package bike
 
 import (
