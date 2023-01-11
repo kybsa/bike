@@ -18,74 +18,82 @@ type InterfaceAnyComponent interface {
 	DoAny()
 }
 
-type StrucComponent struct {
-	InitStatus bool
-	PostStart  bool
-	StopStatus bool
+type StructComponent struct {
+	InitStatus   bool
+	PostStart    bool
+	StopStatus   bool
+	SetContainer bool
 }
 
-func (_self *StrucComponent) DoAnything() {
+func (_self *StructComponent) DoAnything() {
 
 }
 
-func (_self *StrucComponent) Init() {
+func (_self *StructComponent) Init() {
 	_self.InitStatus = true
 }
 
-func (_self *StrucComponent) InitReturnError() error {
+func (_self *StructComponent) InitReturnError() error {
 	return &Error{}
 }
 
-func (_self *StrucComponent) PostInit() {
+func (_self *StructComponent) PostInit() {
 	_self.PostStart = true
 }
 
-func (_self *StrucComponent) InvalidPostInit(param string) {
+func (_self *StructComponent) PostInitWithContainer(container *Container) {
+	_self.SetContainer = true
 }
 
-func (_self *StrucComponent) InvalidInit(param string) {
+func (_self *StructComponent) InvalidPostInit(param string) {
 }
 
-func (_self *StrucComponent) Stop() {
+func (_self *StructComponent) InvalidPostInitTwoArguments(param1 string, param2 int) {
+}
+
+func (_self *StructComponent) InvalidInit(param string) {
+}
+
+func (_self *StructComponent) Stop() {
 	_self.StopStatus = true
 }
 
-func (_self *StrucComponent) StopError() error {
+func (_self *StructComponent) StopError() error {
 	return &Error{}
 }
 
-func (_self *StrucComponent) DoAny() {
+func (_self *StructComponent) DoAny() {
 }
 
 func NewInterfaceComponent() InterfaceComponent {
-	return &StrucComponent{}
+	return &StructComponent{}
 }
 
-func NewComponent() *StrucComponent {
-	return &StrucComponent{
+func NewComponent() *StructComponent {
+	return &StructComponent{
 		InitStatus: false,
 		PostStart:  false,
 		StopStatus: false,
 	}
 }
 
-func NewValueComponent() StrucComponent {
-	return StrucComponent{}
+func NewValueComponent() StructComponent {
+	return StructComponent{}
 }
 
 func InvalidConstructor() {
 }
 
-func NewComponentReturnError() (*StrucComponent, error) {
-	return &StrucComponent{}, &Error{messageError: "message"}
+func NewComponentReturnError() (*StructComponent, error) {
+	return &StructComponent{}, &Error{messageError: "message"}
 }
 
-func NewComponentReturnNilError() (*StrucComponent, error) {
-	return &StrucComponent{}, nil
+func NewComponentReturnNilError() (*StructComponent, error) {
+	return &StructComponent{}, nil
 }
 
-func NewComponentReturnNoError() (*StrucComponent, *StrucComponent) {
-	return &StrucComponent{}, nil
+func NewComponentReturnNoError() (*StructComponent, *StructComponent) {
+	return &StructComponent{}, nil
 }
 
 type A struct {
@@ -153,8 +161,8 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 	bike := NewBike()
 	bike.Add(structComponent)
 	container, _ := bike.Start()
-	instance, _ := container.InstanceByType((*StrucComponent)(nil))
-	strucComponentInstance := (instance).(*StrucComponent)
+	instance, _ := container.InstanceByType((*StructComponent)(nil))
+	StructComponentInstance := (instance).(*StructComponent)
 	// When
 	stopErr := container.Stop()
 	if stopErr != nil {
@@ -163,8 +171,8 @@ func TestStart_GivenComponentWithScopePrototype_WhenStart_ThenCallInitMethod(t *
 
 	// Then
 	time.Sleep(100 * time.Millisecond)
-	if strucComponentInstance.InitStatus == false {
-		t.Errorf("Bike doesn't call init method StrucComponent")
+	if StructComponentInstance.InitStatus == false {
+		t.Errorf("Bike doesn't call init method StructComponent")
 	}
 }
 
@@ -178,9 +186,9 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	bike := NewBike()
 	bike.Add(structComponent)
 	container, _ := bike.Start()
-	instance, _ := container.InstanceByType((*StrucComponent)(nil))
-	strucComponentInstance := (instance).(*StrucComponent)
-	strucComponentInstance.StopStatus = false
+	instance, _ := container.InstanceByType((*StructComponent)(nil))
+	StructComponentInstance := (instance).(*StructComponent)
+	StructComponentInstance.StopStatus = false
 	// When
 	stopErr := container.Stop()
 	if stopErr != nil {
@@ -188,8 +196,8 @@ func TestStop_GivenComponentWithScopePrototype_WhenStop_ThenCallDestroyMethod(t 
 	}
 	// Then
 	time.Sleep(100 * time.Millisecond)
-	if strucComponentInstance.StopStatus == false {
-		t.Errorf("Bike doesn't call stop method StrucComponent")
+	if StructComponentInstance.StopStatus == false {
+		t.Errorf("Bike doesn't call stop method StructComponent")
 	}
 }
 
@@ -203,17 +211,17 @@ func TestStop_GivenComponentWithScopeSingleton_WhenStop_ThenCallDestroyMethod(t 
 	bike := NewBike()
 	bike.Add(structComponent)
 	container, _ := bike.Start()
-	instance, _ := container.InstanceByType((*StrucComponent)(nil))
-	strucComponentInstance := (instance).(*StrucComponent)
-	strucComponentInstance.StopStatus = false
+	instance, _ := container.InstanceByType((*StructComponent)(nil))
+	StructComponentInstance := (instance).(*StructComponent)
+	StructComponentInstance.StopStatus = false
 	// When
 	stopErr := container.Stop()
 	if stopErr != nil {
 		t.Errorf("Error to Stop :%s.", stopErr.Error())
 	}
 	// Then
-	if strucComponentInstance.StopStatus == false {
-		t.Errorf("Bike doesn't call stop method StrucComponent")
+	if StructComponentInstance.StopStatus == false {
+		t.Errorf("Bike doesn't call stop method StructComponent")
 	}
 }
 
@@ -326,7 +334,7 @@ func TestInstanceById_GivenComponentWithInvalidId_WhenInstanceById_ThenReturnErr
 	}
 }
 
-func TestInstancebyType_GivenComponentImplementInterface_WhenInstanceByType_ThenReturnInstance(t *testing.T) {
+func TestInstanceByType_GivenComponentImplementInterface_WhenInstanceByType_ThenReturnInstance(t *testing.T) {
 	// Given
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
@@ -348,10 +356,10 @@ func TestInstancebyType_GivenComponentImplementInterface_WhenInstanceByType_Then
 	}
 }
 
-func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenInstanceByTypeThenReturError(t *testing.T) {
+func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenInstanceByTypeThenReturnError(t *testing.T) {
 	// Given
 	interfaceComponent := Component{
-		Constructor: func(strucComponent *StrucComponent) *string { return nil },
+		Constructor: func(StructComponent *StructComponent) *string { return nil },
 		Scope:       Prototype,
 		ID:          "IdComponent",
 	}
@@ -365,7 +373,7 @@ func TestInstanceByType_GivenComponentScopePrototypeWithInvalidConstructorWhenIn
 	}
 }
 
-func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceThenReturError(t *testing.T) {
+func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceThenReturnError(t *testing.T) {
 	// Given
 	interfaceComponent := Component{
 		Constructor: NewInterfaceComponent,
@@ -382,7 +390,7 @@ func TestInstanceByType_GivenComponentWhenInstanceByTypeNoImplementedInterfaceTh
 	}
 }
 
-func TestStart_GivenComponentConstructorNoReturnPointerWhenRegistryThenReturError(t *testing.T) {
+func TestStart_GivenComponentConstructorNoReturnPointerWhenRegistryThenReturnError(t *testing.T) {
 	// Given
 	constructorComponent := Component{
 		Constructor: NewValueComponent,
@@ -649,11 +657,27 @@ func Test_GivenInterfaceType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
 
 	// Then
 	if actual != "Do" {
-		t.Errorf("Start must return an error")
+		t.Errorf("getTypeName must Do")
 	}
 }
 
-func Test_GivenStrucPointerType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
+func Test_GivenPointerPointerType_WhenGetTypeName_ThenReturnPointerPointerDo(t *testing.T) {
+	// Given
+	type Do interface {
+	}
+	anyDo := (**Do)(nil)
+	interfaceType := reflect.TypeOf(anyDo)
+
+	// When
+	actual := getTypeName(interfaceType)
+
+	// Then
+	if actual != "**Do" {
+		t.Errorf("getTypeName *DoDo, current value:%s", actual)
+	}
+}
+
+func Test_GivenStructPointerType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
 	// Given
 	type Str struct {
 	}
@@ -665,7 +689,7 @@ func Test_GivenStrucPointerType_WhenGetTypeName_ThenReturnDo(t *testing.T) {
 
 	// Then
 	if actual != "*Str" {
-		t.Errorf("Start must return an Str, current value:%s", actual)
+		t.Errorf("getTypeName must return an *Str, current value:%s", actual)
 	}
 }
 
@@ -680,12 +704,12 @@ func TestStart_GivenComponentWithPostStart_WhenStart_ThenCallPostInitMethod(t *t
 	bike.Add(structComponent)
 	// When
 	container, _ := bike.Start()
-	instance, _ := container.InstanceByType((*StrucComponent)(nil))
-	strucComponentInstance := (instance).(*StrucComponent)
+	instance, _ := container.InstanceByType((*StructComponent)(nil))
+	StructComponentInstance := (instance).(*StructComponent)
 	// Then
 	time.Sleep(200 * time.Millisecond)
-	if strucComponentInstance.PostStart == false {
-		t.Errorf("Bike doesn't call init method StrucComponent")
+	if StructComponentInstance.PostStart == false {
+		t.Errorf("Bike doesn't call init method StructComponent")
 	}
 }
 
@@ -710,6 +734,22 @@ func TestStart_GivenComponentWithInvalidPostStart_WhenStart_ThenReturnError(t *t
 		Constructor: NewComponent,
 		Scope:       Singleton,
 		PostStart:   "InvalidPostInit",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	_, startError := bike.Start()
+	if startError == nil {
+		t.Errorf("Start must return an error")
+	}
+}
+
+// TODO ????
+func TestStart_GivenComponentWithInvalidPostStartTwoArguments_WhenStart_ThenReturnError(t *testing.T) {
+	// Given
+	structComponent := Component{
+		Constructor:   NewComponent,
+		Scope:         Singleton,
+		PostConstruct: "InvalidPostInitTwoArguments",
 	}
 	bike := NewBike()
 	bike.Add(structComponent)
@@ -790,5 +830,33 @@ func TestStart_GivenComponentPrototypeStopReturnError_WhenStop_ThenReturnError(t
 	// Then
 	if stopErr == nil {
 		t.Errorf("Stop must return an error")
+	}
+}
+
+func TestStart_GivenComponentWithPostConstructArgument_WhenStart_ThenPostConstructorReceiveContainerArgument(t *testing.T) {
+	// Given
+	structComponent := Component{
+		ID:            "1",
+		Constructor:   NewComponent,
+		Scope:         Prototype,
+		PostConstruct: "PostInitWithContainer",
+	}
+	bike := NewBike()
+	bike.Add(structComponent)
+	// When
+	container, startErr := bike.Start()
+	if startErr != nil {
+		t.Errorf("Start must return no error, Current error:%s", startErr.Error())
+		return
+	}
+
+	interfaceComponent, err := container.InstanceByID("1")
+	if err != nil {
+		t.Errorf("InstanceByID must return no error")
+	}
+	structValue := interfaceComponent.(*StructComponent)
+	// Then
+	if structValue.SetContainer == false {
+		t.Errorf("Start must call PostConstruct setting the container on argument")
 	}
 }

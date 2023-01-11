@@ -46,33 +46,33 @@ type Component struct {
 type ErrorCode uint8
 
 const (
-	// DependecyByIDNotFound error code when a dependency not found by id
-	DependecyByIDNotFound ErrorCode = 0
-	// DependecyByTypeNotFound error code when a dependency not found by type
-	DependecyByTypeNotFound ErrorCode = 1
+	// DependencyByIDNotFound error code when a dependency not found by id
+	DependencyByIDNotFound ErrorCode = 0
+	// DependencyByTypeNotFound error code when a dependency not found by type
+	DependencyByTypeNotFound ErrorCode = 1
 	// InvalidScope error code when a invalid scope
 	InvalidScope ErrorCode = 2
-	// InvalidNumArgOnPostConstruct error code when PostContruct method has arguments
+	// InvalidNumArgOnPostConstruct error code when PostConstruct method has arguments
 	InvalidNumArgOnPostConstruct ErrorCode = 4
 	// InvalidNumArgOnDestroy error code when Destroy method has arguments
 	InvalidNumArgOnDestroy ErrorCode = 5
-	// InvalidNumberOfReturnValuesOnConstructor error when contructor return invalid number of values
+	// InvalidNumberOfReturnValuesOnConstructor error when constructor return invalid number of values
 	InvalidNumberOfReturnValuesOnConstructor ErrorCode = 6
 	// ConstructorReturnNoPointerValue error when constructor method return a no pointer value
 	ConstructorReturnNoPointerValue ErrorCode = 7
-	// ComponentConstructorNull error when Contructor property is null
+	// ComponentConstructorNull error when Constructor property is null
 	ComponentConstructorNull ErrorCode = 8
-	// ConstrutorReturnNotNilError return not nil error
-	ConstrutorReturnNotNilError ErrorCode = 9
-	// ConstructorLastReturnValueIsNotError error when last return isnt type error
+	// ConstructorReturnNotNilError return not nil error
+	ConstructorReturnNotNilError ErrorCode = 9
+	// ConstructorLastReturnValueIsNotError error when last return isn't type error
 	ConstructorLastReturnValueIsNotError ErrorCode = 10
 	// PostStartWithScopeDifferentToSingleton error when a component has PostStart and Scope different to Singleton
 	PostStartWithScopeDifferentToSingleton ErrorCode = 11
-	// PostContructReturnError error when a PostContruct return a error
-	PostContructReturnError = 12
+	// PostConstructReturnError error when a PostConstruct return a error
+	PostConstructReturnError = 12
 )
 
-// Error structo with error info
+// Error struct with error info
 type Error struct {
 	messageError string
 	errorCode    ErrorCode
@@ -185,9 +185,17 @@ func validateComponent(component *Component) *Error {
 				messageError: fmt.Sprintf("Error on Component ID:[%s]. PostConstruct [%s] not found", component.ID, component.PostConstruct),
 				errorCode:    InvalidNumArgOnPostConstruct}
 		}
-		if method.Type.NumIn() != 1 {
+		methodType := method.Type
+		if methodType.NumIn() == 2 {
+			inputType := methodType.In(1)
+			if inputType != reflect.TypeOf((*Container)(nil)) {
+				return &Error{
+					messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid argument type of PostConstruct:[%s], expected *Container, actual:%s", component.ID, component.PostConstruct, getTypeName(inputType)),
+					errorCode:    InvalidNumArgOnPostConstruct}
+			}
+		} else if method.Type.NumIn() != 1 {
 			return &Error{
-				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid argument number of PostConstruct:[%s]", component.ID, component.PostConstruct),
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid argument number of PostConstruct:[%s], expected 0 or 1 arguments, actual:%d", component.ID, component.PostConstruct, method.Type.NumIn()),
 				errorCode:    InvalidNumArgOnPostConstruct}
 		}
 	}
@@ -266,7 +274,7 @@ func (_self *Container) instanceByID(id string) (interface{}, *Error) {
 		}
 	}
 	message := "Component by id:" + id + " not found"
-	return nil, &Error{messageError: message, errorCode: DependecyByIDNotFound}
+	return nil, &Error{messageError: message, errorCode: DependencyByIDNotFound}
 }
 
 func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error) {
@@ -296,15 +304,15 @@ func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error)
 	} else {
 		message = "Component by type:" + getTypeName(_type) + " not found"
 	}
-	return nil, &Error{messageError: message, errorCode: DependecyByTypeNotFound}
+	return nil, &Error{messageError: message, errorCode: DependencyByTypeNotFound}
 }
 
 func (_self *Container) createComponent(component *Component) (*reflect.Value, *Error) {
-	// Create component by contructor method
+	// Create component by constructor method
 	constructorValue := reflect.ValueOf(component.Constructor)
 	constructorType := reflect.TypeOf(component.Constructor)
 
-	// Search dependecies
+	// Search dependencies
 	args := make([]reflect.Value, constructorType.NumIn())
 	for i := 0; i < constructorType.NumIn(); i++ {
 		inputType := constructorType.In(i)
@@ -313,7 +321,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 			args[i] = reflect.ValueOf(inputArg)
 		} else {
 			return nil, &Error{
-				messageError: fmt.Sprintf("Error on Component ID:[%s]. Error to get dependecy: [%s] required by Constructor:[%s]", component.ID, getTypeName(inputType), getFuncName(component)),
+				messageError: fmt.Sprintf("Error on Component ID:[%s]. Error to get dependency: [%s] required by Constructor:[%s]", component.ID, getTypeName(inputType), getFuncName(component)),
 				errorCode:    err.ErrorCode()}
 		}
 	}
@@ -326,7 +334,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 			constructorError := errorElem.Interface().(error)
 			return nil, &Error{
 				messageError: fmt.Sprintf("Error on Component ID:[%s]. Constructor return an error:[%s]", component.ID, constructorError.Error()),
-				errorCode:    ConstrutorReturnNotNilError}
+				errorCode:    ConstructorReturnNotNilError}
 		}
 	}
 
@@ -337,13 +345,22 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 	if len([]rune(component.PostConstruct)) > 0 {
 		method, _ := componentType.MethodByName(component.PostConstruct)
 		typeError := reflect.TypeOf((*error)(nil)).Elem()
-		returnValues := method.Func.Call([]reflect.Value{*component.instanceValue})
+
+		fmt.Println("PostConstruct NumbInt:", method.Type.NumIn())
+		var in []reflect.Value
+		if method.Type.NumIn() == 2 {
+			in = []reflect.Value{*component.instanceValue, reflect.ValueOf(_self)}
+		} else {
+			in = []reflect.Value{*component.instanceValue}
+		}
+
+		returnValues := method.Func.Call(in)
 		for _, value := range returnValues {
 			if value.Type().Implements(typeError) {
 				err := value.Elem().Interface().(error)
 				return nil, &Error{
 					messageError: fmt.Sprintf("Error on Component ID:[%s]. PostConstruct return an error:[%s]", component.ID, err.Error()),
-					errorCode:    PostContructReturnError}
+					errorCode:    PostConstructReturnError}
 			}
 		}
 	}
@@ -412,7 +429,7 @@ func (_self *Container) Stop() *Error {
 						err := value.Elem().Interface().(error)
 						return &Error{
 							messageError: fmt.Sprintf("Error on Component ID:[%s]. Destroy return an error:[%s]", component.ID, err.Error()),
-							errorCode:    PostContructReturnError}
+							errorCode:    PostConstructReturnError}
 					}
 				}
 			} else if component.Scope == Prototype {
@@ -423,7 +440,7 @@ func (_self *Container) Stop() *Error {
 							err := value.Elem().Interface().(error)
 							return &Error{
 								messageError: fmt.Sprintf("Error on Component ID:[%s]. Destroy return an error:[%s]", component.ID, err.Error()),
-								errorCode:    PostContructReturnError}
+								errorCode:    PostConstructReturnError}
 						}
 					}
 				}
@@ -445,6 +462,9 @@ func (_self *Container) InstanceByID(id string) (interface{}, *Error) {
 
 func getTypeName(_type reflect.Type) string {
 	if _type.Kind() == reflect.Pointer {
+		if _type.Elem().Kind() == reflect.Pointer {
+			return "*" + getTypeName(_type.Elem())
+		}
 		return "*" + _type.Elem().Name()
 	} else {
 		return _type.Name()
