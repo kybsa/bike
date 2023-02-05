@@ -873,7 +873,10 @@ func Test_GivenSingletonScopeWhenAddCustomScopeThenReturnError(t *testing.T) {
 func Test_GivenCustomScopeExistWhenAddCustomScopeThenReturnNill(t *testing.T) {
 	// Given
 	bike := NewBike()
-	bike.AddCustomScope(CustomScope, "name")
+	errCustomScope := bike.AddCustomScope(CustomScope, "name")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope must return nil error")
+	}
 	// When
 	err := bike.AddCustomScope(CustomScope, "name")
 	// Then

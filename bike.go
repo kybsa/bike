@@ -456,7 +456,7 @@ func (_self *Bike) Start() (*Container, *Error) {
 	}
 
 	// 0. Create map with custom scopes
-	for key, _ := range _self.customScopes {
+	for key := range _self.customScopes {
 		container.customScopeInstancesByType[key] = make(map[string]map[reflect.Type]*Component)
 		container.customScopeInstancesById[key] = make(map[string]map[string]*Component)
 	}
