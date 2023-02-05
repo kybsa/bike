@@ -69,7 +69,9 @@ const (
 	// PostStartWithScopeDifferentToSingleton error when a component has PostStart and Scope different to Singleton
 	PostStartWithScopeDifferentToSingleton ErrorCode = 11
 	// PostConstructReturnError error when a PostConstruct return a error
-	PostConstructReturnError = 12
+	PostConstructReturnError ErrorCode = 12
+	// DuplicateScope error when a scope exist
+	DuplicateScope ErrorCode = 13
 )
 
 // Error struct with error info
@@ -90,7 +92,8 @@ func (_self *Error) ErrorCode() ErrorCode {
 
 // Bike is main struct of this package
 type Bike struct {
-	components []*Component
+	components   []*Component
+	customScopes map[Scope]string
 }
 
 // Container struct with component management
@@ -98,12 +101,17 @@ type Container struct {
 	componentsByType map[reflect.Type]*Component
 	componentsByID   map[string]*Component
 	components       []*Component
+
+	customScopeInstancesByType map[Scope]map[string]map[reflect.Type]*Component // map[IdScope][IdContext][reflect.Type]
+	customScopeInstancesById   map[Scope]map[string]map[string]*Component       // map[IdScope][IdContext][reflect.Type]
+
 }
 
 // NewBike create a Bike instance
 func NewBike() *Bike {
 	return &Bike{
-		components: make([]*Component, 0),
+		components:   make([]*Component, 0),
+		customScopes: make(map[Scope]string, 0),
 	}
 }
 
@@ -111,6 +119,23 @@ func NewBike() *Bike {
 func (_self *Bike) Add(component Component) {
 	// Add to array
 	_self.components = append(_self.components, &component)
+}
+
+func (_self *Bike) AddCustomScope(newScope Scope, name string) *Error {
+	if newScope == Singleton || newScope == Prototype {
+		return &Error{
+			errorCode:    DuplicateScope,
+			messageError: fmt.Sprintf("Duplicated scope id:%d name:[%s]", newScope, name),
+		}
+	}
+	if _, ok := _self.customScopes[newScope]; ok {
+		return &Error{
+			errorCode:    DuplicateScope,
+			messageError: fmt.Sprintf("Duplicated scope id:%d name:[%s]", newScope, name),
+		}
+	}
+	_self.customScopes[newScope] = name
+	return nil
 }
 
 // Registry a component to Container
@@ -137,7 +162,7 @@ func (_self *Container) registry(component *Component) {
 	}
 }
 
-func validateComponent(component *Component) *Error {
+func (_self *Bike) validateComponent(component *Component) *Error {
 	// Check if component have not constructor method
 	if component.Constructor == nil {
 		return &Error{
@@ -146,7 +171,8 @@ func validateComponent(component *Component) *Error {
 	}
 
 	// Check Scope
-	if component.Scope != Singleton && component.Scope != Prototype {
+	_, isCustomScope := _self.customScopes[component.Scope]
+	if component.Scope != Singleton && component.Scope != Prototype && !isCustomScope {
 		return &Error{
 			messageError: fmt.Sprintf("Error on Component ID:[%s]. Invalid Scope: %s", component.ID, component.Scope.String()),
 			errorCode:    InvalidScope}
@@ -242,15 +268,15 @@ func validateComponent(component *Component) *Error {
 	return nil
 }
 
-func (_self *Container) instanceByTypeAny(inputType any) (interface{}, *Error) {
+func (_self *Container) instanceByTypeAny(inputType any, scope Scope, idContext string) (interface{}, *Error) {
 	_type := reflect.TypeOf(inputType)
 	if _type.Kind() == reflect.Pointer && _type.Elem().Kind() == reflect.Interface {
 		_type = _type.Elem()
 	}
-	return _self.instanceByType(_type)
+	return _self.instanceByType(_type, scope, idContext)
 }
 
-func (_self *Container) instanceByID(id string) (interface{}, *Error) {
+func (_self *Container) instanceByID(id string, scope Scope, idContext string) (interface{}, *Error) {
 	component, ok := _self.componentsByID[id]
 	if ok {
 		if component.Scope == Singleton {
@@ -258,44 +284,96 @@ func (_self *Container) instanceByID(id string) (interface{}, *Error) {
 				return component.instanceValue.Elem().Addr().Interface(), nil
 			}
 			return component.instanceValue.Elem().Interface(), nil
-		} else if component.Scope == Prototype {
-			instance, err := _self.createComponent(component)
-			if err != nil {
-				return nil, err
+		}
+
+		if component.Scope != Prototype {
+			mapContext := _self.customScopeInstancesById[scope][idContext]
+			if mapContext != nil {
+				instanceByContext := mapContext[id]
+				if instanceByContext != nil {
+					return instanceByContext.instanceValue, nil
+				}
 			}
-			var interfaceInstance any
-			if instance.Elem().CanAddr() {
-				interfaceInstance = instance.Elem().Addr().Interface()
-			} else {
-				interfaceInstance = instance.Elem().Interface()
-			}
+		}
+
+		instance, err := _self.createComponent(component, scope, idContext)
+		if err != nil {
+			return nil, err
+		}
+		var interfaceInstance any
+		if instance.Elem().CanAddr() {
+			interfaceInstance = instance.Elem().Addr().Interface()
+		} else {
+			interfaceInstance = instance.Elem().Interface()
+		}
+
+		if component.Scope == Prototype {
 			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
 			return interfaceInstance, nil
+		} else {
+			_, ok := _self.customScopeInstancesByType[scope][idContext]
+			if !ok {
+				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]*Component)
+			}
+			constructorType := reflect.TypeOf(component.Constructor)
+			typeComponent := constructorType.Out(0)
+			_self.customScopeInstancesByType[scope][idContext][typeComponent] = component
+
+			_, ok = _self.customScopeInstancesById[scope][idContext]
+			if !ok {
+				_self.customScopeInstancesById[scope][idContext] = make(map[string]*Component)
+			}
+			_self.customScopeInstancesById[scope][idContext][component.ID] = component
 		}
+		return interfaceInstance, nil
 	}
 	message := "Component by id:" + id + " not found"
 	return nil, &Error{messageError: message, errorCode: DependencyByIDNotFound}
 }
 
-func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error) {
+func (_self *Container) instanceByType(_type reflect.Type, scope Scope, idContext string) (interface{}, *Error) {
 	component, ok := _self.componentsByType[_type]
 	if ok {
 		if component.Scope == Singleton {
 			return component.instanceValue.Elem().Addr().Interface(), nil
-		} else if component.Scope == Prototype {
-			instance, err := _self.createComponent(component)
-			if err != nil {
-				return nil, err
-			}
-			var interfaceInstance any
-			if instance.Elem().CanAddr() {
-				interfaceInstance = instance.Elem().Addr().Interface()
-			} else {
-				interfaceInstance = instance.Elem().Interface()
-			}
-			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
-			return interfaceInstance, nil
 		}
+
+		if component.Scope != Prototype {
+			mapContext := _self.customScopeInstancesByType[scope][idContext]
+			if mapContext != nil {
+				instanceByContext := mapContext[_type]
+				if instanceByContext != nil {
+					return instanceByContext.instanceValue, nil
+				}
+			}
+		}
+
+		instance, err := _self.createComponent(component, scope, idContext)
+		if err != nil {
+			return nil, err
+		}
+		var interfaceInstance any
+		if instance.Elem().CanAddr() {
+			interfaceInstance = instance.Elem().Addr().Interface()
+		} else {
+			interfaceInstance = instance.Elem().Interface()
+		}
+		if component.Scope == Prototype {
+			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
+		} else {
+			_, ok := _self.customScopeInstancesByType[scope][idContext]
+			if !ok {
+				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]*Component)
+			}
+			_self.customScopeInstancesByType[scope][idContext][_type] = component
+
+			_, ok = _self.customScopeInstancesById[scope][idContext]
+			if !ok {
+				_self.customScopeInstancesById[scope][idContext] = make(map[string]*Component)
+			}
+			_self.customScopeInstancesById[scope][idContext][component.ID] = component
+		}
+		return interfaceInstance, nil
 	}
 	var message string
 	if _type.Kind() == reflect.Interface {
@@ -307,7 +385,7 @@ func (_self *Container) instanceByType(_type reflect.Type) (interface{}, *Error)
 	return nil, &Error{messageError: message, errorCode: DependencyByTypeNotFound}
 }
 
-func (_self *Container) createComponent(component *Component) (*reflect.Value, *Error) {
+func (_self *Container) createComponent(component *Component, scope Scope, idContext string) (*reflect.Value, *Error) {
 	// Create component by constructor method
 	constructorValue := reflect.ValueOf(component.Constructor)
 	constructorType := reflect.TypeOf(component.Constructor)
@@ -316,7 +394,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 	args := make([]reflect.Value, constructorType.NumIn())
 	for i := 0; i < constructorType.NumIn(); i++ {
 		inputType := constructorType.In(i)
-		inputArg, err := _self.instanceByType(inputType)
+		inputArg, err := _self.instanceByType(inputType, scope, idContext)
 		if err == nil {
 			args[i] = reflect.ValueOf(inputArg)
 		} else {
@@ -338,7 +416,7 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		}
 	}
 
-	component.instanceValue = &instanceResult[0]
+	instanceValue := &instanceResult[0]
 
 	// Call PostConstruct
 	componentType := constructorType.Out(0)
@@ -346,12 +424,11 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		method, _ := componentType.MethodByName(component.PostConstruct)
 		typeError := reflect.TypeOf((*error)(nil)).Elem()
 
-		fmt.Println("PostConstruct NumbInt:", method.Type.NumIn())
 		var in []reflect.Value
 		if method.Type.NumIn() == 2 {
-			in = []reflect.Value{*component.instanceValue, reflect.ValueOf(_self)}
+			in = []reflect.Value{*instanceValue, reflect.ValueOf(_self)}
 		} else {
-			in = []reflect.Value{*component.instanceValue}
+			in = []reflect.Value{*instanceValue}
 		}
 
 		returnValues := method.Func.Call(in)
@@ -365,20 +442,28 @@ func (_self *Container) createComponent(component *Component) (*reflect.Value, *
 		}
 	}
 
-	return component.instanceValue, nil
+	return instanceValue, nil
 }
 
 // Start start bike
 func (_self *Bike) Start() (*Container, *Error) {
 	container := &Container{
-		componentsByType: make(map[reflect.Type]*Component),
-		componentsByID:   make(map[string]*Component),
-		components:       _self.components,
+		componentsByType:           make(map[reflect.Type]*Component),
+		componentsByID:             make(map[string]*Component),
+		components:                 _self.components,
+		customScopeInstancesByType: make(map[Scope]map[string]map[reflect.Type]*Component),
+		customScopeInstancesById:   make(map[Scope]map[string]map[string]*Component),
+	}
+
+	// 0. Create map with custom scopes
+	for key, _ := range _self.customScopes {
+		container.customScopeInstancesByType[key] = make(map[string]map[reflect.Type]*Component)
+		container.customScopeInstancesById[key] = make(map[string]map[string]*Component)
 	}
 
 	for _, component := range container.components {
 		// 1. Validate
-		validateErr := validateComponent(component)
+		validateErr := _self.validateComponent(component)
 		if validateErr != nil {
 			return nil, validateErr
 		}
@@ -388,7 +473,7 @@ func (_self *Bike) Start() (*Container, *Error) {
 
 		// 3. Create component
 		if component.Scope == Singleton {
-			instanceValue, err := container.createComponent(component)
+			instanceValue, err := container.createComponent(component, Singleton, "0")
 			if err != nil {
 				return nil, err
 			}
@@ -452,12 +537,12 @@ func (_self *Container) Stop() *Error {
 
 // InstanceByType return a instance by type
 func (_self *Container) InstanceByType(inputType any) (interface{}, *Error) {
-	return _self.instanceByTypeAny(inputType)
+	return _self.instanceByTypeAny(inputType, Singleton, "0")
 }
 
 // InstanceByID return a instance by ID
 func (_self *Container) InstanceByID(id string) (interface{}, *Error) {
-	return _self.instanceByID(id)
+	return _self.instanceByID(id, Singleton, "0")
 }
 
 func getTypeName(_type reflect.Type) string {
@@ -473,4 +558,14 @@ func getTypeName(_type reflect.Type) string {
 
 func getFuncName(component *Component) string {
 	return runtime.FuncForPC(reflect.ValueOf(component.Constructor).Pointer()).Name()
+}
+
+// InstanceByType return a instance by type
+func (_self *Container) InstanceByTypeAndIdContext(inputType any, scope Scope, idContext string) (interface{}, *Error) {
+	return _self.instanceByTypeAny(inputType, scope, idContext)
+}
+
+// InstanceById return a instance by type
+func (_self *Container) InstanceByIdAndIdContext(id string, scope Scope, idContext string) (interface{}, *Error) {
+	return _self.instanceByID(id, scope, idContext)
 }
