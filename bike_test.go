@@ -901,14 +901,14 @@ func Test_GivenCustomScope_WhenGetInstanceByType_ThenReturnNotNil(t *testing.T) 
 	container, _ := bike.Start()
 	// When
 	idContext := "id"
-	instance, errGetId := container.InstanceByTypeAndIdContext((*StructComponent)(nil), CustomScope, idContext)
+	instance, errGetId := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
 	// Then
 	if errGetId != nil {
-		t.Errorf("InstanceByTypeAndIdContext must return nil error")
+		t.Errorf("InstanceByTypeAndIDContext must return nil error")
 
 	}
 	if instance == nil {
-		t.Errorf("InstanceByTypeAndIdContext must return not nil value")
+		t.Errorf("InstanceByTypeAndIDContext must return not nil value")
 	}
 }
 
@@ -927,24 +927,24 @@ func Test_GivenCustomScope_WhenCallGetInstanceByTypeTwoTimes_ThenReturnSameInsta
 	bike.Add(structComponent)
 	container, _ := bike.Start()
 	idContext := "id"
-	instance1, errGetId1 := container.InstanceByTypeAndIdContext((*StructComponent)(nil), CustomScope, idContext)
+	instance1, errGetId1 := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
 	// When
-	instance2, errGetId2 := container.InstanceByTypeAndIdContext((*StructComponent)(nil), CustomScope, idContext)
+	instance2, errGetId2 := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
 
 	// Then
 	if errGetId1 != nil {
-		t.Errorf("InstanceByTypeAndIdContext must return nil error")
+		t.Errorf("InstanceByTypeAndIDContext must return nil error")
 
 	}
 	if errGetId2 != nil {
-		t.Errorf("InstanceByTypeAndIdContext must return nil error")
+		t.Errorf("InstanceByTypeAndIDContext must return nil error")
 
 	}
 	if instance1 == nil {
-		t.Errorf("InstanceByTypeAndIdContext must return not nil value")
+		t.Errorf("InstanceByTypeAndIDContext must return not nil value")
 	}
 	if instance1 == instance2 {
-		t.Errorf("InstanceByTypeAndIdContext must return same instance")
+		t.Errorf("InstanceByTypeAndIDContext must return same instance")
 	}
 }
 
@@ -964,13 +964,13 @@ func Test_GivenCustomScope_WhenGetInstanceById_ThenReturnNotNil(t *testing.T) {
 	container, _ := bike.Start()
 	// When
 	idContext := "id"
-	instance, errGetId := container.InstanceByIdAndIdContext(structComponent.ID, CustomScope, idContext)
+	instance, errGetId := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
 	// Then
 	if errGetId != nil {
-		t.Errorf("InstanceByIdAndIdContext must return nil error")
+		t.Errorf("InstanceByIDAndIDContext must return nil error")
 	}
 	if instance == nil {
-		t.Errorf("InstanceByIdAndIdContext must return not nil value")
+		t.Errorf("InstanceByIDAndIDContext must return not nil value")
 	}
 }
 
@@ -989,23 +989,23 @@ func Test_GivenCustomScope_WhenCallGetInstanceByIdTwoTimes_ThenReturnSameInstanc
 	bike.Add(structComponent)
 	container, _ := bike.Start()
 	idContext := "id"
-	instance1, errGetId1 := container.InstanceByIdAndIdContext(structComponent.ID, CustomScope, idContext)
+	instance1, errGetId1 := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
 	// When
-	instance2, errGetId2 := container.InstanceByIdAndIdContext(structComponent.ID, CustomScope, idContext)
+	instance2, errGetId2 := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
 
 	// Then
 	if errGetId1 != nil {
-		t.Errorf("InstanceByIdAndIdContext must return nil error")
+		t.Errorf("InstanceByIDAndIDContext must return nil error")
 
 	}
 	if errGetId2 != nil {
-		t.Errorf("InstanceByIdAndIdContext must return nil error")
+		t.Errorf("InstanceByIDAndIDContext must return nil error")
 
 	}
 	if instance1 == nil {
-		t.Errorf("InstanceByIdAndIdContext must return not nil value")
+		t.Errorf("InstanceByIDAndIDContext must return not nil value")
 	}
 	if instance1 == instance2 {
-		t.Errorf("InstanceByIdAndIdContext must return same instance")
+		t.Errorf("InstanceByIDAndIDContext must return same instance")
 	}
 }
