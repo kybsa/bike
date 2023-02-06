@@ -272,3 +272,19 @@ func (_self *Container) InstanceByTypeAndIDContext(inputType any, scope Scope, i
 func (_self *Container) InstanceByIDAndIDContext(id string, scope Scope, idContext string) (interface{}, *Error) {
 	return _self.instanceByID(id, scope, idContext)
 }
+
+func (_self *Container) RemoveContext(scope Scope, idContext string) *Error {
+	// Remove context or error if doesn't exist
+	if _, ok := _self.customScopeInstancesByID[scope]; !ok {
+		return &Error{
+			messageError: fmt.Sprintf("Invalid Scope:[%d]", scope),
+			errorCode:    InvalidScope}
+	}
+	if _, ok := _self.customScopeInstancesByID[scope][idContext]; !ok {
+		return &Error{
+			messageError: fmt.Sprintf("Context id:[%s] not found", idContext),
+			errorCode:    InvalidScope}
+	}
+	delete(_self.customScopeInstancesByID[scope], idContext)
+	return nil
+}

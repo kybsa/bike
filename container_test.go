@@ -126,3 +126,71 @@ func Test_GivenCustomScope_WhenCallGetInstanceByIdTwoTimes_ThenReturnSameInstanc
 		t.Errorf("InstanceByIDAndIDContext must return same instance")
 	}
 }
+
+func Test_GivenCustomScope_WhenRemoveContext_ThenReturnNilError(t *testing.T) {
+	// Given
+	bike := NewBike()
+	err := bike.AddCustomScope(CustomScope, "name")
+	if err != nil {
+		t.Errorf("AddCustomScope must return nil")
+	}
+	structComponent := Component{
+		Constructor: NewComponent,
+		ID:          "IdStructComponent",
+		Scope:       CustomScope,
+	}
+	bike.Add(structComponent)
+	container, _ := bike.Start()
+	idContext := "id"
+	container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
+	// When
+	errInstance2 := container.RemoveContext(CustomScope, idContext)
+
+	// Then
+	if errInstance2 != nil {
+		t.Errorf("RemoveContext must return nil error")
+	}
+}
+
+func Test_GivenInvalidCustomScope_WhenRemoveContext_ThenReturnError(t *testing.T) {
+	// Given
+	bike := NewBike()
+	err := bike.AddCustomScope(CustomScope, "name")
+	if err != nil {
+		t.Errorf("AddCustomScope must return nil")
+	}
+	container, _ := bike.Start()
+	idContext := "id"
+	// When
+	errInstance2 := container.RemoveContext(99, idContext)
+
+	// Then
+	if errInstance2 == nil {
+		t.Errorf("RemoveContext must return an error")
+	}
+}
+
+func Test_GivenInvalidIdContext_WhenRemoveContext_ThenReturnError(t *testing.T) {
+	// Given
+	bike := NewBike()
+	err := bike.AddCustomScope(CustomScope, "name")
+	if err != nil {
+		t.Errorf("AddCustomScope must return nil")
+	}
+	structComponent := Component{
+		Constructor: NewComponent,
+		ID:          "IdStructComponent",
+		Scope:       CustomScope,
+	}
+	bike.Add(structComponent)
+	container, _ := bike.Start()
+	idContext := "id"
+	container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
+	// When
+	errorRemoveContext := container.RemoveContext(CustomScope, "idContextInvalid")
+
+	// Then
+	if errorRemoveContext == nil {
+		t.Errorf("RemoveContext must return an error")
+	}
+}
