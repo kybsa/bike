@@ -185,7 +185,7 @@ func Test_GivenInvalidIdContext_WhenRemoveContext_ThenReturnError(t *testing.T) 
 	bike.Add(structComponent)
 	container, _ := bike.Start()
 	idContext := "id"
-	container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
+	_, _ = container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
 	// When
 	errorRemoveContext := container.RemoveContext(CustomScope, "idContextInvalid")
 
