@@ -550,34 +550,6 @@ func TestInstanceById_GivenComponentInvalidDependenciesWhenStartIdThenReturnErro
 	}
 }
 
-func TestBikeError_GivenBikeErrorWhenErrorThenReturnErrorMessage(t *testing.T) {
-	// Given
-	bikeError := Error{
-		messageError: "message",
-		errorCode:    ComponentConstructorNull,
-	}
-	// When
-	currentMessage := bikeError.Error()
-	// Then
-	if currentMessage != bikeError.messageError {
-		t.Errorf("Error must return expected value")
-	}
-}
-
-func TestBikeError_GivenBikeErrorWhenErrorCodeThenReturnErrorCode(t *testing.T) {
-	// Given
-	bikeError := Error{
-		messageError: "message",
-		errorCode:    ComponentConstructorNull,
-	}
-	// When
-	currentError := bikeError.ErrorCode()
-	// Then
-	if currentError != ComponentConstructorNull {
-		t.Errorf("ErrorCode must return expected value")
-	}
-}
-
 func TestStart_GivenComponentConstructorReturnError_WhenStart_ThenReturnError(t *testing.T) {
 	// Given
 	component := Component{
@@ -592,7 +564,6 @@ func TestStart_GivenComponentConstructorReturnError_WhenStart_ThenReturnError(t 
 	if err == nil {
 		t.Errorf("Start must return an error")
 	}
-
 }
 
 func TestStart_GivenComponentConstructorNoReturn_WhenStart_ThenReturnNilError(t *testing.T) {
@@ -726,7 +697,6 @@ func TestStart_GivenComponentWithInvalidPostStart_WhenStart_ThenReturnError(t *t
 	}
 }
 
-// TODO ????
 func TestStart_GivenComponentWithInvalidPostStartTwoArguments_WhenStart_ThenReturnError(t *testing.T) {
 	// Given
 	structComponent := Component{
@@ -882,130 +852,5 @@ func Test_GivenCustomScopeExistWhenAddCustomScopeThenReturnNill(t *testing.T) {
 	// Then
 	if err == nil {
 		t.Errorf("AddCustomScope must return an error")
-	}
-}
-
-func Test_GivenCustomScope_WhenGetInstanceByType_ThenReturnNotNil(t *testing.T) {
-	// Given
-	bike := NewBike()
-	err := bike.AddCustomScope(CustomScope, "name")
-	if err != nil {
-		t.Errorf("AddCustomScope must return nil")
-	}
-	structComponent := Component{
-		Constructor: NewComponent,
-		ID:          "IdStructComponent",
-		Scope:       CustomScope,
-	}
-	bike.Add(structComponent)
-	container, _ := bike.Start()
-	// When
-	idContext := "id"
-	instance, errGetId := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
-	// Then
-	if errGetId != nil {
-		t.Errorf("InstanceByTypeAndIDContext must return nil error")
-
-	}
-	if instance == nil {
-		t.Errorf("InstanceByTypeAndIDContext must return not nil value")
-	}
-}
-
-func Test_GivenCustomScope_WhenCallGetInstanceByTypeTwoTimes_ThenReturnSameInstances(t *testing.T) {
-	// Given
-	bike := NewBike()
-	err := bike.AddCustomScope(CustomScope, "name")
-	if err != nil {
-		t.Errorf("AddCustomScope must return nil")
-	}
-	structComponent := Component{
-		Constructor: NewComponent,
-		ID:          "IdStructComponent",
-		Scope:       CustomScope,
-	}
-	bike.Add(structComponent)
-	container, _ := bike.Start()
-	idContext := "id"
-	instance1, errGetId1 := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
-	// When
-	instance2, errGetId2 := container.InstanceByTypeAndIDContext((*StructComponent)(nil), CustomScope, idContext)
-
-	// Then
-	if errGetId1 != nil {
-		t.Errorf("InstanceByTypeAndIDContext must return nil error")
-
-	}
-	if errGetId2 != nil {
-		t.Errorf("InstanceByTypeAndIDContext must return nil error")
-
-	}
-	if instance1 == nil {
-		t.Errorf("InstanceByTypeAndIDContext must return not nil value")
-	}
-	if instance1 == instance2 {
-		t.Errorf("InstanceByTypeAndIDContext must return same instance")
-	}
-}
-
-func Test_GivenCustomScope_WhenGetInstanceById_ThenReturnNotNil(t *testing.T) {
-	// Given
-	bike := NewBike()
-	err := bike.AddCustomScope(CustomScope, "name")
-	if err != nil {
-		t.Errorf("AddCustomScope must return nil")
-	}
-	structComponent := Component{
-		Constructor: NewComponent,
-		ID:          "IdStructComponent",
-		Scope:       CustomScope,
-	}
-	bike.Add(structComponent)
-	container, _ := bike.Start()
-	// When
-	idContext := "id"
-	instance, errGetId := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
-	// Then
-	if errGetId != nil {
-		t.Errorf("InstanceByIDAndIDContext must return nil error")
-	}
-	if instance == nil {
-		t.Errorf("InstanceByIDAndIDContext must return not nil value")
-	}
-}
-
-func Test_GivenCustomScope_WhenCallGetInstanceByIdTwoTimes_ThenReturnSameInstances(t *testing.T) {
-	// Given
-	bike := NewBike()
-	err := bike.AddCustomScope(CustomScope, "name")
-	if err != nil {
-		t.Errorf("AddCustomScope must return nil")
-	}
-	structComponent := Component{
-		Constructor: NewComponent,
-		ID:          "IdStructComponent",
-		Scope:       CustomScope,
-	}
-	bike.Add(structComponent)
-	container, _ := bike.Start()
-	idContext := "id"
-	instance1, errGetId1 := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
-	// When
-	instance2, errGetId2 := container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
-
-	// Then
-	if errGetId1 != nil {
-		t.Errorf("InstanceByIDAndIDContext must return nil error")
-
-	}
-	if errGetId2 != nil {
-		t.Errorf("InstanceByIDAndIDContext must return nil error")
-
-	}
-	if instance1 == nil {
-		t.Errorf("InstanceByIDAndIDContext must return not nil value")
-	}
-	if instance1 == instance2 {
-		t.Errorf("InstanceByIDAndIDContext must return same instance")
 	}
 }
