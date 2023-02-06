@@ -142,7 +142,7 @@ func Test_GivenCustomScope_WhenRemoveContext_ThenReturnNilError(t *testing.T) {
 	bike.Add(structComponent)
 	container, _ := bike.Start()
 	idContext := "id"
-	container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
+	_, _ = container.InstanceByIDAndIDContext(structComponent.ID, CustomScope, idContext)
 	// When
 	errInstance2 := container.RemoveContext(CustomScope, idContext)
 
