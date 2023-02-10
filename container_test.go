@@ -60,7 +60,7 @@ func Test_GivenCustomScope_WhenCallGetInstanceByTypeTwoTimes_ThenReturnSameInsta
 	if instance1 == nil {
 		t.Errorf("InstanceByTypeAndIDContext must return not nil value")
 	}
-	if instance1 == instance2 {
+	if instance1 != instance2 {
 		t.Errorf("InstanceByTypeAndIDContext must return same instance")
 	}
 }
@@ -122,7 +122,7 @@ func Test_GivenCustomScope_WhenCallGetInstanceByIdTwoTimes_ThenReturnSameInstanc
 	if instance1 == nil {
 		t.Errorf("InstanceByIDAndIDContext must return not nil value")
 	}
-	if instance1 == instance2 {
+	if instance1 != instance2 {
 		t.Errorf("InstanceByIDAndIDContext must return same instance")
 	}
 }

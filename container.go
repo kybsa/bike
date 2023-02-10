@@ -13,8 +13,8 @@ type Container struct {
 	componentsByType           map[reflect.Type]*Component
 	componentsByID             map[string]*Component
 	components                 []*Component
-	customScopeInstancesByType map[Scope]map[string]map[reflect.Type]*Component
-	customScopeInstancesByID   map[Scope]map[string]map[string]*Component
+	customScopeInstancesByType map[Scope]map[string]map[reflect.Type]interface{}
+	customScopeInstancesByID   map[Scope]map[string]map[string]interface{}
 }
 
 // Registry a component to Container
@@ -64,7 +64,7 @@ func (_self *Container) instanceByID(id string, scope Scope, idContext string) (
 			if mapContext != nil {
 				instanceByContext := mapContext[id]
 				if instanceByContext != nil {
-					return instanceByContext.instanceValue, nil
+					return instanceByContext, nil
 				}
 			}
 		}
@@ -86,17 +86,17 @@ func (_self *Container) instanceByID(id string, scope Scope, idContext string) (
 		} else {
 			_, ok := _self.customScopeInstancesByType[scope][idContext]
 			if !ok {
-				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]*Component)
+				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]interface{})
 			}
 			constructorType := reflect.TypeOf(component.Constructor)
 			typeComponent := constructorType.Out(0)
-			_self.customScopeInstancesByType[scope][idContext][typeComponent] = component
+			_self.customScopeInstancesByType[scope][idContext][typeComponent] = interfaceInstance
 
 			_, ok = _self.customScopeInstancesByID[scope][idContext]
 			if !ok {
-				_self.customScopeInstancesByID[scope][idContext] = make(map[string]*Component)
+				_self.customScopeInstancesByID[scope][idContext] = make(map[string]interface{})
 			}
-			_self.customScopeInstancesByID[scope][idContext][component.ID] = component
+			_self.customScopeInstancesByID[scope][idContext][component.ID] = interfaceInstance
 		}
 		return interfaceInstance, nil
 	}
@@ -116,7 +116,7 @@ func (_self *Container) instanceByType(_type reflect.Type, scope Scope, idContex
 			if mapContext != nil {
 				instanceByContext := mapContext[_type]
 				if instanceByContext != nil {
-					return instanceByContext.instanceValue, nil
+					return instanceByContext, nil
 				}
 			}
 		}
@@ -135,16 +135,20 @@ func (_self *Container) instanceByType(_type reflect.Type, scope Scope, idContex
 			component.prototypeInstancesValue = append(component.prototypeInstancesValue, instance)
 		} else {
 			_, ok := _self.customScopeInstancesByType[scope][idContext]
+			// TODO El problema es que "component" almacenado en customScope no tiene definido instanceValue
+			//  Entonces siempre se regresa nulo, sin embargo
+			// PUEDE QUe lo mejor sea almacenar en no el Component sino el value o
+			// de lo contrario crear una copia del componente!!!!
 			if !ok {
-				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]*Component)
+				_self.customScopeInstancesByType[scope][idContext] = make(map[reflect.Type]interface{})
 			}
-			_self.customScopeInstancesByType[scope][idContext][_type] = component
+			_self.customScopeInstancesByType[scope][idContext][_type] = interfaceInstance
 
 			_, ok = _self.customScopeInstancesByID[scope][idContext]
 			if !ok {
-				_self.customScopeInstancesByID[scope][idContext] = make(map[string]*Component)
+				_self.customScopeInstancesByID[scope][idContext] = make(map[string]interface{})
 			}
-			_self.customScopeInstancesByID[scope][idContext][component.ID] = component
+			_self.customScopeInstancesByID[scope][idContext][component.ID] = interfaceInstance
 		}
 		return interfaceInstance, nil
 	}

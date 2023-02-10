@@ -157,14 +157,14 @@ func (_self *Bike) Start() (*Container, *Error) {
 		componentsByType:           make(map[reflect.Type]*Component),
 		componentsByID:             make(map[string]*Component),
 		components:                 _self.components,
-		customScopeInstancesByType: make(map[Scope]map[string]map[reflect.Type]*Component),
-		customScopeInstancesByID:   make(map[Scope]map[string]map[string]*Component),
+		customScopeInstancesByType: make(map[Scope]map[string]map[reflect.Type]interface{}),
+		customScopeInstancesByID:   make(map[Scope]map[string]map[string]interface{}),
 	}
 
 	// 0. Create map with custom scopes
 	for key := range _self.customScopes {
-		container.customScopeInstancesByType[key] = make(map[string]map[reflect.Type]*Component)
-		container.customScopeInstancesByID[key] = make(map[string]map[string]*Component)
+		container.customScopeInstancesByType[key] = make(map[string]map[reflect.Type]interface{})
+		container.customScopeInstancesByID[key] = make(map[string]map[string]interface{})
 	}
 
 	for _, component := range container.components {
