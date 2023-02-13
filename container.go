@@ -4,8 +4,6 @@ package bike
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/google/uuid"
 )
 
 // Container struct with component management
@@ -20,9 +18,6 @@ type Container struct {
 // Registry a component to Container
 func (_self *Container) registry(component *Component) {
 	// Registry by id
-	if len([]rune(component.ID)) == 0 {
-		component.ID = uuid.NewString()
-	}
 	_self.componentsByID[component.ID] = component
 
 	constructorType := reflect.TypeOf(component.Constructor)

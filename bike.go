@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // Bike is main struct of this package
@@ -25,6 +27,9 @@ func NewBike() *Bike {
 // Add add a component to bike
 func (_self *Bike) Add(component Component) {
 	// Add to array
+	if len([]rune(component.ID)) == 0 {
+		component.ID = uuid.NewString()
+	}
 	_self.components = append(_self.components, &component)
 }
 

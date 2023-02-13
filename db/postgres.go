@@ -15,7 +15,11 @@ var (
 
 // PostgresComponent to config postgres database client
 type PostgresComponent struct {
-	DB *gorm.DB
+	db *gorm.DB
+}
+
+func (postgresComponent *PostgresComponent) DB() *gorm.DB {
+	return postgresComponent.db
 }
 
 func createDB(simpleConfig *config.SimpleConfig) (*gorm.DB, error) {
@@ -32,7 +36,7 @@ func NewPostgresComponent(simpleConfig *config.SimpleConfig) (*PostgresComponent
 		return nil, errDB
 	}
 	return &PostgresComponent{
-		DB: db,
+		db: db,
 	}, nil
 }
 
@@ -44,6 +48,6 @@ func NewPostgresComponentSession(
 		return nil, errDB
 	}
 	return &PostgresComponent{
-		DB: db.Session(session),
+		db: db.Session(session),
 	}, nil
 }
