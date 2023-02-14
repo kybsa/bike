@@ -87,7 +87,10 @@ func TestStart_GivenTransactionRequestController_WhenStart_ThenCallHandle(t *tes
 func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
-	bk.AddCustomScope(Request, "Request")
+	errCustomScope := bk.AddCustomScope(Request, "Request")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope mus return nil error")
+	}
 	// OK
 	bk.Add(bike.Component{
 		Constructor: NewMockDBComponent,
@@ -139,7 +142,10 @@ func NewController() *Controller {
 func Test_GivenControllerReturnOk_WhenHandRequest_ThenCallJSONWithOkStatus(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
-	bk.AddCustomScope(Request, "Request")
+	errCustomScope := bk.AddCustomScope(Request, "Request")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope mus return nil error")
+	}
 	bk.Add(bike.Component{
 		Constructor: NewMockDBComponent,
 		Scope:       bike.Singleton,
@@ -184,7 +190,10 @@ func Test_GivenControllerReturnOk_WhenHandRequest_ThenCallJSONWithOkStatus(t *te
 func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
-	bk.AddCustomScope(Request, "Request")
+	errCustomScope := bk.AddCustomScope(Request, "Request")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope mus return nil error")
+	}
 	bk.Add(bike.Component{
 		Constructor: NewMockDBComponent,
 		Scope:       bike.Singleton,
@@ -238,7 +247,10 @@ func NewMockDBComponentTransactionFail() *MockDBComponent {
 func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
-	bk.AddCustomScope(Request, "Request")
+	errCustomScope := bk.AddCustomScope(Request, "Request")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope mus return nil error")
+	}
 	bk.Add(bike.Component{
 		Constructor: NewMockDBComponentTransactionFail,
 		Scope:       bike.Singleton,
@@ -283,7 +295,10 @@ func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSON
 func Test_GivenControllerReturnErrorAndTransactionFail_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
-	bk.AddCustomScope(Request, "Request")
+	errCustomScope := bk.AddCustomScope(Request, "Request")
+	if errCustomScope != nil {
+		t.Errorf("AddCustomScope mus return nil error")
+	}
 	bk.Add(bike.Component{
 		Constructor: NewMockDBComponentTransactionFail,
 		Scope:       bike.Singleton,
