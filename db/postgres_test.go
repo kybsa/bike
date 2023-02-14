@@ -108,3 +108,17 @@ func Test_GivenOpenReturnError_WhenNewPostgresComponentSession_ThenReturnError(t
 		t.Errorf("NewPostgresComponent must return an error.")
 	}
 }
+
+func Test_PostgresComponentWithNulDb_WhenBD_ThenReturnNil(t *testing.T) {
+	// Given
+	expectedDb := &gorm.DB{}
+	postgresComponent := PostgresComponent{
+		db: expectedDb,
+	}
+	// When
+	db := postgresComponent.DB()
+	// Then
+	if db != expectedDb {
+		t.Errorf("DB method must return expected value")
+	}
+}

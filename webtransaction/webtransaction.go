@@ -44,14 +44,14 @@ func handRequest(context Context, registryControllerItem RegistryControllerItem,
 	if httpStatus > 199 && httpStatus < 300 {
 		transaction.Commit()
 		if transaction.Error != nil {
-			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			context.JSON(http.StatusInternalServerError, gin.H{"error": transaction.Error.Error()})
 		} else {
 			context.JSON(httpStatus, body)
 		}
 	} else {
 		transaction.Rollback()
 		if transaction.Error != nil {
-			context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			context.JSON(http.StatusInternalServerError, gin.H{"error": transaction.Error.Error()})
 		} else {
 			context.JSON(httpStatus, body)
 		}

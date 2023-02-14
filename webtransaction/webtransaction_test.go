@@ -1,6 +1,7 @@
 package webtransaction
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
@@ -226,12 +227,15 @@ func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalSer
 }
 
 func NewMockDbComponentTransactionFail() *MockDbComponent {
+	db, _ := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
+	tx := db.Begin()
+	tx.Error = errors.New("error")
 	return &MockDbComponent{
-		db: &gorm.DB{},
+		db: tx,
 	}
 }
 
-func Test_GivenControllerReturnOkTransactionFail_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
+func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
 	bk.AddCustomScope(Request, "Request")
@@ -260,6 +264,51 @@ func Test_GivenControllerReturnOkTransactionFail_WhenHandRequest_ThenCallJSONWit
 		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
 			controller := (inputController).(*Controller)
 			return controller.Ok(context)
+		},
+	}
+
+	// When
+	handRequest(context, registryControllerItem, container)
+
+	// Then
+	if !context.CallJSON {
+		t.Errorf("handRequest must call JSON method")
+	}
+
+	if context.Code != http.StatusInternalServerError {
+		t.Errorf("handRequest must call JSON with StatusInternalServerError")
+	}
+}
+
+func Test_GivenControllerReturnErrorAndTransactionFail_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
+	// Given
+	bk := bike.NewBike()
+	bk.AddCustomScope(Request, "Request")
+	bk.Add(bike.Component{
+		Constructor: NewMockDbComponentTransactionFail,
+		Scope:       bike.Singleton,
+		Interfaces:  []any{(*GormComponent)(nil)},
+	})
+	bk.Add(bike.Component{
+		ID:          "NewTransactionComponent",
+		Constructor: NewTransactionComponent,
+		Scope:       Request,
+	})
+	bk.Add(bike.Component{
+		ID:          "NewController",
+		Constructor: NewController,
+		Scope:       Request,
+	})
+	container, errStartBike := bk.Start()
+	if errStartBike != nil {
+		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
+	}
+	context := &MockContext{}
+	registryControllerItem := RegistryControllerItem{
+		Type: (*Controller)(nil),
+		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
+			controller := (inputController).(*Controller)
+			return controller.Error(context)
 		},
 	}
 
