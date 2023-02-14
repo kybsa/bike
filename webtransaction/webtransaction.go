@@ -26,7 +26,7 @@ func (transactionRequestController *TransactionRequestController) Start(containe
 
 func handRequest(context Context, registryControllerItem RegistryControllerItem, container *bike.Container) {
 	idRequest := uuid.NewString()
-	defer container.RemoveContext(Request, idRequest)
+	defer releaseContext(context, idRequest, container)
 	gormComponentInterface, errTr := container.InstanceByTypeAndIDContext((*GormComponent)(nil), Request, idRequest)
 	if errTr != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": errTr.Error()})
@@ -55,6 +55,13 @@ func handRequest(context Context, registryControllerItem RegistryControllerItem,
 		} else {
 			context.JSON(httpStatus, body)
 		}
+	}
+}
+
+func releaseContext(context Context, idRequest string, container *bike.Container) {
+	err := container.RemoveContext(Request, idRequest)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 }
 

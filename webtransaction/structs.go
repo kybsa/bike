@@ -1,3 +1,4 @@
+// Package webtransaction to implement transaction on a web applications
 package webtransaction
 
 import (
@@ -7,15 +8,19 @@ import (
 )
 
 const (
+	// Request scope to use on web development
 	Request bike.Scope = 3
 )
 
+// TransactionComponent store a DB with begin transaction
 type TransactionComponent struct {
 	DB *gorm.DB
 }
 
+// HandlerFuncController define interface function to call methods on registry controller config
 type HandlerFuncController func(context Context, controller interface{}) (int, interface{})
 
+// RegistryControllerItem store dato to registry a controller
 type RegistryControllerItem struct {
 	Type         any
 	HttMethod    string
@@ -23,6 +28,7 @@ type RegistryControllerItem struct {
 	CallMethod   HandlerFuncController
 }
 
+// RegistryController Store array of RegistryControllerItem
 type RegistryController struct {
 	Items []RegistryControllerItem
 }

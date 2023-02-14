@@ -12,17 +12,17 @@ import (
 	"github.com/kybsa/bike"
 )
 
-type MockDbComponent struct {
+type MockDBComponent struct {
 	db *gorm.DB
 }
 
-func (mockDbComponent *MockDbComponent) DB() *gorm.DB {
+func (mockDbComponent *MockDBComponent) DB() *gorm.DB {
 	return mockDbComponent.db
 }
 
-func NewMockDbComponent() *MockDbComponent {
+func NewMockDBComponent() *MockDBComponent {
 	gdb, _ := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
-	return &MockDbComponent{
+	return &MockDBComponent{
 		db: gdb.Begin(),
 	}
 }
@@ -30,7 +30,7 @@ func NewMockDbComponent() *MockDbComponent {
 func TestNewTransactionPostgresComponent_GivenPostgresComponent_WhenNewTransactionPostgresComponentThenReturnNotNull(t *testing.T) {
 	// Given
 	gdb, _ := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
-	postgresComponent := &MockDbComponent{
+	postgresComponent := &MockDBComponent{
 		db: gdb,
 	}
 	// When
@@ -90,7 +90,7 @@ func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerE
 	bk.AddCustomScope(Request, "Request")
 	// OK
 	bk.Add(bike.Component{
-		Constructor: NewMockDbComponent,
+		Constructor: NewMockDBComponent,
 		Scope:       bike.Singleton,
 		Interfaces:  []any{(*GormComponent)(nil)},
 	})
@@ -141,7 +141,7 @@ func Test_GivenControllerReturnOk_WhenHandRequest_ThenCallJSONWithOkStatus(t *te
 	bk := bike.NewBike()
 	bk.AddCustomScope(Request, "Request")
 	bk.Add(bike.Component{
-		Constructor: NewMockDbComponent,
+		Constructor: NewMockDBComponent,
 		Scope:       bike.Singleton,
 		Interfaces:  []any{(*GormComponent)(nil)},
 	})
@@ -186,7 +186,7 @@ func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalSer
 	bk := bike.NewBike()
 	bk.AddCustomScope(Request, "Request")
 	bk.Add(bike.Component{
-		Constructor: NewMockDbComponent,
+		Constructor: NewMockDBComponent,
 		Scope:       bike.Singleton,
 		Interfaces:  []any{(*GormComponent)(nil)},
 	})
@@ -226,11 +226,11 @@ func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalSer
 	}
 }
 
-func NewMockDbComponentTransactionFail() *MockDbComponent {
+func NewMockDBComponentTransactionFail() *MockDBComponent {
 	db, _ := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
 	tx := db.Begin()
 	tx.Error = errors.New("error")
-	return &MockDbComponent{
+	return &MockDBComponent{
 		db: tx,
 	}
 }
@@ -240,7 +240,7 @@ func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSON
 	bk := bike.NewBike()
 	bk.AddCustomScope(Request, "Request")
 	bk.Add(bike.Component{
-		Constructor: NewMockDbComponentTransactionFail,
+		Constructor: NewMockDBComponentTransactionFail,
 		Scope:       bike.Singleton,
 		Interfaces:  []any{(*GormComponent)(nil)},
 	})
@@ -285,7 +285,7 @@ func Test_GivenControllerReturnErrorAndTransactionFail_WhenHandRequest_ThenCallJ
 	bk := bike.NewBike()
 	bk.AddCustomScope(Request, "Request")
 	bk.Add(bike.Component{
-		Constructor: NewMockDbComponentTransactionFail,
+		Constructor: NewMockDBComponentTransactionFail,
 		Scope:       bike.Singleton,
 		Interfaces:  []any{(*GormComponent)(nil)},
 	})
