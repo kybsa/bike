@@ -18,13 +18,13 @@ func NewTransactionComponent(gormComponent GormComponent) *TransactionComponent 
 func (transactionRequestController *TransactionRequestController) Start(container *bike.Container) {
 	for _, item := range transactionRequestController.Items {
 		valItem := item
-		transactionRequestController.Engine.Handle(valItem.HttMethod, valItem.RelativePath, func(context Context) {
+		transactionRequestController.Engine.Handle(valItem.HttMethod, valItem.RelativePath, func(context *gin.Context) {
 			handRequest(context, valItem, container)
 		})
 	}
 }
 
-func handRequest(context Context, registryControllerItem RegistryControllerItem, container *bike.Container) {
+func handRequest(context *gin.Context, registryControllerItem RegistryControllerItem, container *bike.Container) {
 	idRequest := uuid.NewString()
 	defer releaseContext(context, idRequest, container)
 	gormComponentInterface, errTr := container.InstanceByTypeAndIDContext((*GormComponent)(nil), Request, idRequest)
@@ -58,7 +58,7 @@ func handRequest(context Context, registryControllerItem RegistryControllerItem,
 	}
 }
 
-func releaseContext(context Context, idRequest string, container *bike.Container) {
+func releaseContext(context *gin.Context, idRequest string, container *bike.Container) {
 	err := container.RemoveContext(Request, idRequest)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

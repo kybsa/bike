@@ -1,7 +1,9 @@
 package webtransaction
 
 import (
+	"bufio"
 	"errors"
+	"net"
 	"net/http"
 	"testing"
 
@@ -41,25 +43,16 @@ func TestNewTransactionPostgresComponent_GivenPostgresComponent_WhenNewTransacti
 	}
 }
 
-type MockContext struct {
-	CallJSON bool
-	Code     int
-	Body     any
-}
-
-func (context *MockContext) JSON(code int, obj any) {
-	context.CallJSON = true
-	context.Code = code
-	context.Body = obj
-}
-
 type MockEngine struct {
 	CallHandle bool
 }
 
-func (mockEngine *MockEngine) Handle(httpMethod, relativePath string, handlers ...HandlerFunc) gin.IRoutes {
+func (mockEngine *MockEngine) Handle(httpMethod, relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes {
 	mockEngine.CallHandle = true
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	for _, handler := range handlers {
 		handler(context)
 	}
@@ -84,6 +77,67 @@ func TestStart_GivenTransactionRequestController_WhenStart_ThenCallHandle(t *tes
 	}
 }
 
+type InternalResponseWriter struct {
+	CallWrite   bool
+	ValueStatus int
+}
+
+// Status returns the HTTP response status code of the current request.
+func (responseWriter *InternalResponseWriter) Status() int {
+	return 1
+}
+
+// Size returns the number of bytes already written into the response http body.
+// See Written()
+func (responseWriter *InternalResponseWriter) Size() int {
+	return 1
+}
+
+// WriteString writes the string into the response body.
+func (responseWriter *InternalResponseWriter) WriteString(string) (int, error) {
+	return 1, nil
+}
+
+// Written returns true if the response body was already written.
+func (responseWriter *InternalResponseWriter) Written() bool {
+	return true
+}
+
+// WriteHeaderNow forces to write the http header (status code + headers).
+func (responseWriter *InternalResponseWriter) WriteHeaderNow() {
+
+}
+
+// Pusher get the http.Pusher for server push
+func (responseWriter *InternalResponseWriter) Pusher() http.Pusher {
+	return nil
+}
+
+func (responseWriter *InternalResponseWriter) CloseNotify() <-chan bool {
+	return nil
+}
+
+func (responseWriter *InternalResponseWriter) Flush() {
+
+}
+
+func (responseWriter *InternalResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, nil
+}
+
+func (responseWriter *InternalResponseWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (responseWriter *InternalResponseWriter) Write([]byte) (int, error) {
+	responseWriter.CallWrite = true
+	return 1, nil
+}
+
+func (responseWriter *InternalResponseWriter) WriteHeader(statusCode int) {
+	responseWriter.ValueStatus = statusCode
+}
+
 func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerError(t *testing.T) {
 	// Given
 	bk := bike.NewBike()
@@ -106,7 +160,10 @@ func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerE
 	if errStartBike != nil {
 		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
 	}
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	registryControllerItem := RegistryControllerItem{
 		Type: (*RegistryControllerItem)(nil),
 	}
@@ -115,11 +172,11 @@ func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerE
 	handRequest(context, registryControllerItem, container)
 
 	// Then
-	if !context.CallJSON {
-		t.Errorf("handRequest must call JSON method")
+	if !internalResponseWriter.CallWrite {
+		t.Errorf("handRequest must call JSON")
 	}
 
-	if context.Code != http.StatusInternalServerError {
+	if internalResponseWriter.ValueStatus != http.StatusInternalServerError {
 		t.Errorf("handRequest must call JSON with StatusInternalServerError")
 	}
 }
@@ -127,11 +184,11 @@ func Test_GivenInvalidController_WhenHandRequest_ThenCallJSONWithInternalServerE
 type Controller struct {
 }
 
-func (controller *Controller) Ok(context Context) (int, interface{}) {
+func (controller *Controller) Ok(context *gin.Context) (int, interface{}) {
 	return http.StatusOK, "val"
 }
 
-func (controller *Controller) Error(context Context) (int, interface{}) {
+func (controller *Controller) Error(context *gin.Context) (int, interface{}) {
 	return http.StatusInternalServerError, "val"
 }
 
@@ -165,10 +222,13 @@ func Test_GivenControllerReturnOk_WhenHandRequest_ThenCallJSONWithOkStatus(t *te
 	if errStartBike != nil {
 		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
 	}
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	registryControllerItem := RegistryControllerItem{
 		Type: (*Controller)(nil),
-		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
+		CallMethod: func(context *gin.Context, inputController interface{}) (int, interface{}) {
 			controller := (inputController).(*Controller)
 			return controller.Ok(context)
 		},
@@ -178,12 +238,11 @@ func Test_GivenControllerReturnOk_WhenHandRequest_ThenCallJSONWithOkStatus(t *te
 	handRequest(context, registryControllerItem, container)
 
 	// Then
-	if !context.CallJSON {
-		t.Errorf("handRequest must call JSON method")
-	}
-
-	if context.Code != http.StatusOK {
+	if internalResponseWriter.ValueStatus != http.StatusOK {
 		t.Errorf("handRequest must call JSON with StatusOK")
+	}
+	if !internalResponseWriter.CallWrite {
+		t.Errorf("handRequest must call JSON")
 	}
 }
 
@@ -213,10 +272,13 @@ func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalSer
 	if errStartBike != nil {
 		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
 	}
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	registryControllerItem := RegistryControllerItem{
 		Type: (*Controller)(nil),
-		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
+		CallMethod: func(context *gin.Context, inputController interface{}) (int, interface{}) {
 			controller := (inputController).(*Controller)
 			return controller.Error(context)
 		},
@@ -226,11 +288,10 @@ func Test_GivenControllerReturnError_WhenHandRequest_ThenCallJSONWithInternalSer
 	handRequest(context, registryControllerItem, container)
 
 	// Then
-	if !context.CallJSON {
-		t.Errorf("handRequest must call JSON method")
+	if !internalResponseWriter.CallWrite {
+		t.Errorf("handRequest must call JSON")
 	}
-
-	if context.Code != http.StatusInternalServerError {
+	if internalResponseWriter.ValueStatus != http.StatusInternalServerError {
 		t.Errorf("handRequest must call JSON with StatusInternalServerError")
 	}
 }
@@ -270,10 +331,13 @@ func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSON
 	if errStartBike != nil {
 		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
 	}
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	registryControllerItem := RegistryControllerItem{
 		Type: (*Controller)(nil),
-		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
+		CallMethod: func(context *gin.Context, inputController interface{}) (int, interface{}) {
 			controller := (inputController).(*Controller)
 			return controller.Ok(context)
 		},
@@ -283,11 +347,10 @@ func Test_GivenControllerReturnOkAndTransactionFail_WhenHandRequest_ThenCallJSON
 	handRequest(context, registryControllerItem, container)
 
 	// Then
-	if !context.CallJSON {
-		t.Errorf("handRequest must call JSON method")
+	if !internalResponseWriter.CallWrite {
+		t.Errorf("handRequest must call JSON")
 	}
-
-	if context.Code != http.StatusInternalServerError {
+	if internalResponseWriter.ValueStatus != http.StatusInternalServerError {
 		t.Errorf("handRequest must call JSON with StatusInternalServerError")
 	}
 }
@@ -318,10 +381,13 @@ func Test_GivenControllerReturnErrorAndTransactionFail_WhenHandRequest_ThenCallJ
 	if errStartBike != nil {
 		t.Errorf("Start must no return nil. Error:[%s]", errStartBike.Error())
 	}
-	context := &MockContext{}
+	internalResponseWriter := &InternalResponseWriter{}
+	context := &gin.Context{
+		Writer: internalResponseWriter,
+	}
 	registryControllerItem := RegistryControllerItem{
 		Type: (*Controller)(nil),
-		CallMethod: func(context Context, inputController interface{}) (int, interface{}) {
+		CallMethod: func(context *gin.Context, inputController interface{}) (int, interface{}) {
 			controller := (inputController).(*Controller)
 			return controller.Error(context)
 		},
@@ -331,11 +397,10 @@ func Test_GivenControllerReturnErrorAndTransactionFail_WhenHandRequest_ThenCallJ
 	handRequest(context, registryControllerItem, container)
 
 	// Then
-	if !context.CallJSON {
-		t.Errorf("handRequest must call JSON method")
+	if !internalResponseWriter.CallWrite {
+		t.Errorf("handRequest must call JSON")
 	}
-
-	if context.Code != http.StatusInternalServerError {
+	if internalResponseWriter.ValueStatus != http.StatusInternalServerError {
 		t.Errorf("handRequest must call JSON with StatusInternalServerError")
 	}
 }

@@ -18,7 +18,7 @@ type TransactionComponent struct {
 }
 
 // HandlerFuncController define interface function to call methods on registry controller config
-type HandlerFuncController func(context Context, controller interface{}) (int, interface{})
+type HandlerFuncController func(context *gin.Context, controller interface{}) (int, interface{})
 
 // RegistryControllerItem store dato to registry a controller
 type RegistryControllerItem struct {
@@ -33,14 +33,8 @@ type RegistryController struct {
 	Items []RegistryControllerItem
 }
 
-type Context interface {
-	JSON(code int, obj any)
-}
-
-type HandlerFunc func(Context)
-
 type Engine interface {
-	Handle(httpMethod, relativePath string, handlers ...HandlerFunc) gin.IRoutes
+	Handle(httpMethod, relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type TransactionRequestController struct {
