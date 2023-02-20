@@ -25,7 +25,7 @@ func (mockDbComponent *MockDBComponent) DB() *gorm.DB {
 func NewMockDBComponent() *MockDBComponent {
 	gdb, _ := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
 	return &MockDBComponent{
-		db: gdb.Begin(),
+		db: gdb,
 	}
 }
 

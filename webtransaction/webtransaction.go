@@ -33,7 +33,7 @@ func handRequest(context *gin.Context, registryControllerItem RegistryController
 		return
 	}
 	gormComponent := gormComponentInterface.(GormComponent)
-	transaction := gormComponent.DB()
+	transaction := gormComponent.DB().Begin()
 
 	controller, err := container.InstanceByTypeAndIDContext(registryControllerItem.Type, Request, idRequest)
 	if err != nil {
