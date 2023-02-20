@@ -27,13 +27,13 @@ func (transactionRequestController *TransactionRequestController) Start(containe
 func handRequest(context *gin.Context, registryControllerItem RegistryControllerItem, container *bike.Container) {
 	idRequest := uuid.NewString()
 	defer releaseContext(context, idRequest, container)
-	gormComponentInterface, errTr := container.InstanceByTypeAndIDContext((*GormComponent)(nil), Request, idRequest)
+	transactionComponentInterface, errTr := container.InstanceByTypeAndIDContext((*TransactionComponent)(nil), Request, idRequest)
 	if errTr != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": errTr.Error()})
 		return
 	}
-	gormComponent := gormComponentInterface.(GormComponent)
-	transaction := gormComponent.DB().Begin()
+	transactionComponent := transactionComponentInterface.(*TransactionComponent)
+	transaction := transactionComponent.DB
 
 	controller, err := container.InstanceByTypeAndIDContext(registryControllerItem.Type, Request, idRequest)
 	if err != nil {
